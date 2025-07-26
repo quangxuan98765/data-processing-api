@@ -201,10 +201,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-**Developer**: [Tên của bạn]  
-**Email**: [email@domain.com]  
-**LinkedIn**: [LinkedIn profile link]  
-**GitHub**: [@yourusername](https://github.com/yourusername)
+**Developer**: [Quang]  
+**Email**: [acongchuongheo@gmail.com]  
+**LinkedIn**: [[LinkedIn profile link](https://www.linkedin.com/in/quang-xuan-669491349/)]  
+**GitHub**: [@quangxuan98765](https://github.com/quangxuan98765)
 
 ---
 
