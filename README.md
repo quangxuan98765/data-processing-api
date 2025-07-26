@@ -1,6 +1,6 @@
 # 📊 Excel Data API
 
-> **Professional ASP.NET Core Web API for Excel Data Processing & Bulk Database Operations**
+> **ASP.NET Core Web API for Excel Data Processing & Bulk Database Operations**
 
 ## 🚀 Overview
 
