@@ -54,7 +54,7 @@ ExcelDataAPI/
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/quangxuan98765/excel-data-processing-api]
+git clone https://github.com/quangxuan98765/excel-data-processing-api
 cd ExcelDataAPI-Project
 ```
 
