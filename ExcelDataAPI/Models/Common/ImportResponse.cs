@@ -1,6 +1,8 @@
-namespace ExcelDataAPI.Models;
+using ExcelDataAPI.Models.Common;
 
-public class BulkInsertResponse
+namespace ExcelDataAPI.Models.Common;
+
+public class ImportResponse
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;

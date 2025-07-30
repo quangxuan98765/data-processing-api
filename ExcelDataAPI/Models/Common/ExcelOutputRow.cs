@@ -1,4 +1,4 @@
-namespace ExcelDataAPI.Models;
+namespace ExcelDataAPI.Models.Common;
 
 public class ExcelOutputRow
 {

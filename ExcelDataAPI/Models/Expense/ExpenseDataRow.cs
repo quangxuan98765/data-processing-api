@@ -1,11 +1,11 @@
-namespace ExcelDataAPI.Models;
+namespace ExcelDataAPI.Models.Expense;
 
-public class FinancialDataRow
+public class ExpenseDataRow
 {
     public string ThangTaiChinh { get; set; } = string.Empty;
     public string NamTaiChinh { get; set; } = string.Empty;
     public string IdNguon { get; set; } = string.Empty;
-    public string LoaiThu { get; set; } = string.Empty;
+    public string LoaiChi { get; set; } = string.Empty;
     public string SoTien { get; set; } = string.Empty;
     public string MoTa { get; set; } = string.Empty;
     public string GhiChu { get; set; } = string.Empty;

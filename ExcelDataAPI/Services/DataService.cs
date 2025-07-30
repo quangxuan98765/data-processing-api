@@ -1,6 +1,8 @@
 using Microsoft.Data.SqlClient;
 using System.Data;
-using ExcelDataAPI.Models;
+using ExcelDataAPI.Models.Common;
+using ExcelDataAPI.Models.Revenue;
+using ExcelDataAPI.Models.Expense;
 
 namespace ExcelDataAPI.Services;
 
@@ -14,14 +16,14 @@ public class DataService
             ?? throw new ArgumentNullException("Connection string not found");
     }
 
-    public async Task<BulkInsertResult> BulkInsertToSqlServer(List<FinancialDataRow> validRows)
+    public async Task<BulkInsertResult> BulkInsertRevenueDataAsync(List<RevenueDataRow> validRows)
     {
         var result = new BulkInsertResult();
         
         if (!validRows.Any())
         {
             result.Success = false;
-            result.Message = "Không có dữ liệu hợp lệ để insert";
+            result.Message = "Không có dữ liệu thu hợp lệ để insert";
             return result;
         }
 
@@ -92,13 +94,104 @@ public class DataService
             await bulkCopy.WriteToServerAsync(table);
 
             result.Success = true;
-            result.Message = "Bulk insert thành công";
+            result.Message = "Bulk insert thu thành công";
             result.InsertedRows = result.ProcessedRows;
         }
         catch (Exception ex)
         {
             result.Success = false;
-            result.Message = $"Bulk insert failed: {ex.Message}";
+            result.Message = $"Bulk insert thu failed: {ex.Message}";
+            result.Errors.Add(ex.Message);
+        }
+
+        return result;
+    }
+
+    public async Task<BulkInsertResult> BulkInsertExpenseDataAsync(List<Models.Expense.ExpenseDataRow> validRows)
+    {
+        var result = new BulkInsertResult();
+        
+        if (!validRows.Any())
+        {
+            result.Success = false;
+            result.Message = "Không có dữ liệu chi hợp lệ để insert";
+            return result;
+        }
+
+        try
+        {
+            // Tạo DataTable cho expense
+            var table = new DataTable();
+            table.Columns.Add("ThangTaiChinh", typeof(int));
+            table.Columns.Add("NamTaiChinh", typeof(int));
+            table.Columns.Add("IdNguon", typeof(int));
+            table.Columns.Add("LoaiChi", typeof(string));
+            table.Columns.Add("SoTien", typeof(decimal));
+            table.Columns.Add("MoTa", typeof(string));
+            table.Columns.Add("GhiChu", typeof(string));
+            table.Columns.Add("ThoiGianNhap", typeof(DateTime));
+            table.Columns.Add("IDNguoiDung", typeof(string));
+            table.Columns.Add("NguoiNhap", typeof(string));
+
+            // Thêm dữ liệu vào DataTable
+            foreach (var row in validRows)
+            {
+                try
+                {
+                    table.Rows.Add(
+                        ParseInt(row.ThangTaiChinh),
+                        ParseInt(row.NamTaiChinh),
+                        ParseInt(row.IdNguon),
+                        row.LoaiChi,
+                        ParseDecimal(row.SoTien),
+                        row.MoTa,
+                        row.GhiChu,
+                        DateTime.Now,
+                        row.IDNguoiDung,
+                        row.NguoiNhap
+                    );
+                    result.ProcessedRows++;
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"Error processing expense row: {ex.Message}");
+                    result.FailedRows++;
+                }
+            }
+
+            // Bulk insert vào SQL Server table TaiChinh_ChiHoatDong
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var bulkCopy = new SqlBulkCopy(connection)
+            {
+                DestinationTableName = "dbo.TaiChinh_ChiHoatDong",
+                BatchSize = 1000,
+                BulkCopyTimeout = 300
+            };
+
+            // Explicit column mapping - BỎ column ID vì auto-increment
+            bulkCopy.ColumnMappings.Add("ThangTaiChinh", "ThangTaiChinh");
+            bulkCopy.ColumnMappings.Add("NamTaiChinh", "NamTaiChinh");
+            bulkCopy.ColumnMappings.Add("IdNguon", "IdNguon");
+            bulkCopy.ColumnMappings.Add("LoaiChi", "LoaiChi");
+            bulkCopy.ColumnMappings.Add("SoTien", "SoTien");
+            bulkCopy.ColumnMappings.Add("MoTa", "MoTa");
+            bulkCopy.ColumnMappings.Add("GhiChu", "GhiChu");
+            bulkCopy.ColumnMappings.Add("ThoiGianNhap", "ThoiGianNhap");
+            bulkCopy.ColumnMappings.Add("IDNguoiDung", "IDNguoiDung");
+            bulkCopy.ColumnMappings.Add("NguoiNhap", "NguoiNhap");
+
+            await bulkCopy.WriteToServerAsync(table);
+
+            result.Success = true;
+            result.Message = "Bulk insert chi thành công";
+            result.InsertedRows = result.ProcessedRows;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = $"Bulk insert chi failed: {ex.Message}";
             result.Errors.Add(ex.Message);
         }
 

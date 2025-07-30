@@ -1,64 +1,57 @@
 using Microsoft.AspNetCore.Mvc;
-using ExcelDataAPI.Models;
+using ExcelDataAPI.Models.Revenue;
+using ExcelDataAPI.Models.Common;
 using ExcelDataAPI.Services;
 
-namespace ExcelDataAPI.Controllers
+namespace ExcelDataAPI.Controllers.Revenue
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class BulkInsertController : ControllerBase
+    [Route("api/revenue")]
+    public class RevenueController : ControllerBase
     {
         private readonly ValidationService _validationService;
         private readonly DataService _dataService;
 
-        public BulkInsertController(ValidationService validationService, DataService dataService)
+        public RevenueController(ValidationService validationService, DataService dataService)
         {
             _validationService = validationService;
             _dataService = dataService;
         }
 
         /// <summary>
-        /// API để bulk insert dữ liệu từ Power Automate với validation tích hợp
+        /// Import Excel revenue data (Thu hoạt động)
         /// </summary>
-        [HttpPost("financial-data")]
-        public async Task<IActionResult> BulkInsertFinancialData([FromBody] BulkInsertRequest request)
+        [HttpPost("import")]
+        public async Task<IActionResult> ImportRevenueData([FromBody] RevenueImportRequest request)
         {
             if (request?.Data == null || !request.Data.Any())
             {
-                return BadRequest(new BulkInsertResponse 
+                return BadRequest(new ImportResponse 
                 { 
                     Success = false, 
-                    Message = "Không có dữ liệu để xử lý" 
+                    Message = "Không có dữ liệu thu để xử lý" 
                 });
             }
 
             try
             {
-                var response = new BulkInsertResponse
+                var response = new ImportResponse
                 {
                     TotalRows = request.Data.Count
                 };
 
-                // Validate Excel structure
-                if (!_validationService.ValidateExcelStructure(request.Data))
-                {
-                    response.Success = false;
-                    response.Message = "Cấu trúc file Excel không đúng. Thiếu các cột bắt buộc.";
-                    return BadRequest(response);
-                }
-
                 // Validate từng row
-                var validRows = new List<FinancialDataRow>();
+                var validRows = new List<RevenueDataRow>();
                 var validationResults = new List<ValidationResult>();
 
                 foreach (var row in request.Data)
                 {
-                    var validation = _validationService.ValidateRow(row, request.IDNguoiDung, request.NguoiNhap);
+                    var validation = _validationService.ValidateRevenueRow(row, request.IDNguoiDung, request.NguoiNhap);
                     validationResults.Add(validation);
 
-                    if (validation.IsValid && validation.ValidatedRow != null)
+                    if (validation.IsValid && validation.ValidatedRevenueRow != null)
                     {
-                        validRows.Add(validation.ValidatedRow);
+                        validRows.Add(validation.ValidatedRevenueRow);
                     }
                 }
 
@@ -71,40 +64,40 @@ namespace ExcelDataAPI.Controllers
                 if (!validRows.Any())
                 {
                     response.Success = false;
-                    response.Message = "Không có dữ liệu hợp lệ để insert";
+                    response.Message = "Không có dữ liệu hợp lệ để import";
                     return BadRequest(response);
                 }
 
                 // Bulk insert valid rows
-                var insertResult = await _dataService.BulkInsertToSqlServer(validRows);
+                var insertResult = await _dataService.BulkInsertRevenueDataAsync(validRows);
                 
                 response.Success = insertResult.Success;
                 response.InsertedRows = insertResult.InsertedRows;
                 response.Message = insertResult.Success 
-                    ? $"Import thành công {insertResult.InsertedRows}/{response.TotalRows} rows"
-                    : $"Import thất bại: {insertResult.Message}";
+                    ? $"Import thu thành công {insertResult.InsertedRows}/{response.TotalRows} rows"
+                    : $"Import thu thất bại: {insertResult.Message}";
                 response.ErrorDetail = insertResult.Success ? null : insertResult.Message;
 
                 return insertResult.Success ? Ok(response) : BadRequest(response);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new BulkInsertResponse
+                return StatusCode(500, new ImportResponse
                 {
                     Success = false,
-                    Message = "Lỗi hệ thống khi xử lý dữ liệu",
+                    Message = "Lỗi hệ thống khi xử lý dữ liệu thu",
                     ErrorDetail = ex.Message
                 });
             }
         }
 
         /// <summary>
-        /// Health check endpoint
+        /// Health check cho revenue API
         /// </summary>
         [HttpGet("health")]
         public IActionResult Health()
         {
-            return Ok(new { status = "API đang hoạt động", timestamp = DateTime.UtcNow });
+            return Ok(new { status = "Revenue API đang hoạt động", timestamp = DateTime.UtcNow });
         }
     }
 }
