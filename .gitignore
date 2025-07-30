@@ -90,4 +90,4 @@ node_modules/
 .env.production.local
 
 # Build output directories
-.publish/
+publish/
