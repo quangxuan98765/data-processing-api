@@ -1,6 +1,6 @@
 # 📊 Excel Data API
 
-> **Professional ASP.NET Core Web API for Excel Data Processing & Bulk Database Operations**
+> **ASP.NET Core Web API for Excel Data Processing & Bulk Database Operations**
 
 ## 🚀 Overview
 
@@ -54,7 +54,7 @@ ExcelDataAPI/
 
 ### 1. Clone the Repository
 ```bash
-git clone [your-repo-url]
+git clone https://github.com/quangxuan98765/excel-data-processing-api
 cd ExcelDataAPI-Project
 ```
 
@@ -201,9 +201,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-**Developer**: [Quang]  
-**Email**: [acongchuongheo@gmail.com]  
-**LinkedIn**: [[LinkedIn profile link](https://www.linkedin.com/in/quang-xuan-669491349/)]  
+**Developer**: [Quang](#)  
+**Email**: [acongchuongheo@gmail.com](mailto:acongchuongheo@gmail.com)  
+**LinkedIn**: [Quang Xuân](https://www.linkedin.com/in/quang-xuan-669491349/)  
 **GitHub**: [@quangxuan98765](https://github.com/quangxuan98765)
 
 ---
