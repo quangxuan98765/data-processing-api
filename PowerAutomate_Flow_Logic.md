@@ -1,13 +1,29 @@
-# Power Automate Flow Complete Guide
+# Power Automate Flow Complete Guide - CLEAN ARCHITECTURE
 
-## 🔄 FLOW HOÀN CHỈNH - CHI TIẾT TỪNG BƯỚC:
+## 🏗️ **NEW CLEAN ARCHITECTURE ENDPOINTS:**
+
+### 📊 **Revenue Endpoints:**
+- `POST /api/revenue/import` - Import revenue data
+- `POST /api/revenue/validate` - Validate revenue before import
+- `GET /api/revenue/period/{month}/{year}` - Get revenue by period
+- `GET /api/revenue/exists/{month}/{year}/{sourceId}` - Check revenue exists
+
+### 💰 **Expense Endpoints:**
+- `POST /api/expense/import` - Import expense data
+- `POST /api/expense/validate` - Validate expense before import
+- `GET /api/expense/period/{month}/{year}` - Get expense by period
+- `GET /api/expense/exists/{month}/{year}/{sourceId}` - Check expense exists
+
+---
+
+## 🔄 **POWER AUTOMATE FLOW - CẬP NHẬT:**
 
 ### 1. **When PowerApp calls a flow V2**
 - Trigger từ Power App
-- Nhận parameters: File Excel, IDNguoiDung, NguoiNhap
+- Nhận parameters: File Excel, IDNguoiDung, NguoiNhap, **DataType (revenue/expense)**
 
 ### 2. **Create file (SharePoint)**
-- **File Name:** `Input_@{utcNow()}.xlsx`
+- **File Name:** `Input_@{triggerBody()?['dataType']}_@{utcNow()}.xlsx`
 - **File Content:** `@{triggerBody()?['file']['contentBytes']}`
 - **Folder Path:** `/Shared Documents/TaiChinhInput/`
 
@@ -23,9 +39,16 @@
 - **File:** Output từ step 2
 - **Table:** Output từ step 3
 
-### 5. **HTTP - Call C# API**
+### 5. **Condition - Check Data Type**
+- **Condition:** `@{triggerBody()?['dataType']}` equals `revenue`
+
+---
+
+## ✅ **REVENUE BRANCH:**
+
+### 5.1. **HTTP - Call Revenue API**
 - **Method:** POST
-- **URI:** `https://eb65f130856c.ngrok-free.app/api/bulkinsert/financial-data`
+- **URI:** `https://eb65f130856c.ngrok-free.app/api/revenue/import`
 - **Headers:**
   ```json
   {
@@ -42,86 +65,111 @@
   }
   ```
 
-### 6. **Condition - Check API Success**
-- **Condition:** `@{body('HTTP')?['success']}` equals `true`
+### 5.2. **Condition - Check Revenue API Success**
+- **Condition:** `@{body('HTTP_Revenue')?['success']}` equals `true`
 
 ---
 
-## ✅ **YES BRANCH (API Success):**
+## ✅ **EXPENSE BRANCH:**
 
-### 7a. **Create CSV table - Result Data**
-- **From:** `@{body('HTTP')?['excelOutputData']}`
-- **Columns:** (Tự động detect từ JSON structure)
-  - ThangTaiChinh
-  - NamTaiChinh  
-  - TenNguon
-  - LoaiThu
-  - SoTien
-  - MoTa
-  - GhiChu
-  - KetQuaXuLy
+### 5.1. **HTTP - Call Expense API**
+- **Method:** POST
+- **URI:** `https://eb65f130856c.ngrok-free.app/api/expense/import`
+- **Headers:**
+  ```json
+  {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true"
+  }
+  ```
+- **Body:**
+  ```json
+  {
+    "data": @{body('List_rows_present_in_a_table')?['value']},
+    "idNguoiDung": "@{triggerBody()?['IDNguoiDung']}",
+    "nguoiNhap": "@{triggerBody()?['NguoiNhap']}"
+  }
+  ```
 
-### 8a. **Create file (SharePoint) - Result File**
-- **File Name:** `KetQua_@{utcNow()}.csv`
-- **File Content:** `@{body('Create_CSV_table')}`
-- **Folder Path:** `/Shared Documents/TaiChinhOutput/`
+### 5.2. **Condition - Check Expense API Success**
+- **Condition:** `@{body('HTTP_Expense')?['success']}` equals `true`
 
-### 9a. **Compose - Download Link**
-- **Inputs:** `@{body('Create_file_2')?['WebUrl']}`
+---
 
-### 10a. **Respond to PowerApp - Success**
-```json
-{
-  "DownloadUrl": "@{outputs('Compose')}",
-  "ErrorMessage": "",
-  "Summary": {
-    "TotalRows": @{body('HTTP')?['totalRows']},
-    "ValidRows": @{body('HTTP')?['validRows']},
-    "InvalidRows": @{body('HTTP')?['invalidRows']},
-    "Message": "@{body('HTTP')?['message']}"
-  },
-  "Success": true
-}
+## ✅ **SUCCESS BRANCHES (Revenue/Expense):**
+
+---
+
+## ✅ **SUCCESS BRANCHES:**
+
+### 6.1. **Revenue Success Actions**
+- **Create Success File:** `Success_Revenue_@{utcNow()}.xlsx`
+- **Email Subject:** `✅ Import dữ liệu doanh thu thành công`
+- **Response Data:** Revenue-specific results
+
+### 6.2. **Expense Success Actions**  
+- **Create Success File:** `Success_Expense_@{utcNow()}.xlsx`
+- **Email Subject:** `✅ Import dữ liệu chi phí thành công`
+- **Response Data:** Expense-specific results
+
+---
+
+## ❌ **ERROR BRANCHES:**
+
+### 7.1. **Revenue Error Actions**
+- **Create Error File:** `Error_Revenue_@{utcNow()}.xlsx`
+- **Email Subject:** `❌ Lỗi import dữ liệu doanh thu`
+- **Error Details:** Revenue-specific error handling
+
+### 7.2. **Expense Error Actions**
+- **Create Error File:** `Error_Expense_@{utcNow()}.xlsx`
+- **Email Subject:** `❌ Lỗi import dữ liệu chi phí`
+- **Error Details:** Expense-specific error handling
+
+---
+
+## 🔧 **MIGRATION NOTES:**
+
+### ⚠️ **BREAKING CHANGES:**
+1. **Old Endpoint:** `/api/bulkinsert/financial-data` ❌
+2. **New Endpoints:** 
+   - `/api/revenue/import` ✅
+   - `/api/expense/import` ✅
+
+### 📝 **Power App Updates Required:**
+1. Add **DataType** parameter (`revenue` or `expense`)
+2. Update flow to call correct endpoint based on data type
+3. Handle separate success/error responses for each type
+
+### 🎯 **Benefits of New Architecture:**
+- ✅ **Separation of Concerns:** Revenue và Expense logic tách biệt
+- ✅ **Maintainability:** Dễ debug và phát triển
+- ✅ **Scalability:** Có thể mở rộng từng module độc lập
+- ✅ **Clear API:** Endpoints rõ ràng theo business domain
+
+---
+
+## 🏗️ **CLEAN ARCHITECTURE STRUCTURE:**
+
+```
+Application/
+├── Interfaces/
+│   └── Financial/
+│       ├── IRevenueService.cs
+│       └── IExpenseService.cs
+└── Services/
+    └── Financial/
+        ├── RevenueService.cs
+        └── ExpenseService.cs
+
+Controllers/
+└── Financial/
+    ├── RevenueController.cs
+    └── ExpenseController.cs
 ```
 
----
-
-## ❌ **NO BRANCH (API Error):**
-
-### 7b. **Respond to PowerApp - Error**
-```json
-{
-  "DownloadUrl": "",
-  "ErrorMessage": "@{body('HTTP')?['message']}",
-  "Summary": {
-    "TotalRows": @{body('HTTP')?['totalRows']},
-    "ValidRows": @{body('HTTP')?['validRows']},
-    "InvalidRows": @{body('HTTP')?['invalidRows']},
-    "Message": "@{body('HTTP')?['message']}"
-  },
-  "Success": false
-}
-```
-
----
-
-## 🎯 **QUAN TRỌNG - Create CSV Table Setup:**
-
-**"From" field configuration:**
-1. Click vào **"From"** field
-2. Chọn **Dynamic content**
-3. Tìm **"HTTP"** action  
-4. Chọn **"body"**
-5. Thêm đường dẫn: `['excelOutputData']`
-6. Final value: `@{body('HTTP')?['excelOutputData']}`
-
-**Columns sẽ tự động được detect từ JSON structure của ExcelOutputData**
-
----
-
-## 📊 **Power App Response Handling:**
-
-Power App sẽ nhận được response với cấu trúc:
-- **Success = true:** Hiển thị download link và summary
-- **Success = false:** Hiển thị error message  
-- **Summary:** Luôn có thông tin thống kê (total, valid, invalid rows)
+### 🔄 **Service Methods:**
+- `BulkInsertAsync()` - Import data with validation
+- `ValidateAsync()` - Validate data before import  
+- `CheckDataExistsAsync()` - Check for existing data
+- `GetByPeriodAsync()` - Retrieve data by month/year
