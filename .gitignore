@@ -37,6 +37,10 @@ ScaffoldingReadMe.txt
 appsettings.json
 appsettings.Development.json
 
+# DataAccess Library build outputs
+DataAccess/bin/
+DataAccess/obj/
+
 # Database
 *.db
 *.db-shm
