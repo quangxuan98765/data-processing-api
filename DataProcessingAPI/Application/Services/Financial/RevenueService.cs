@@ -1,8 +1,8 @@
-using DataProcessingAPI.Application.Interfaces.Financial;
-using DataProcessingAPI.Application.DTOs;
-using DataProcessingAPI.Shared.Constants;
-using DataAccess;
 using System.Data;
+using DataProcessingAPI.Application.DTOs;
+using DataProcessingAPI.Application.Interfaces.Financial;
+using DataProcessingAPI.Shared.Constants;
+using DataAccess;            
 
 namespace DataProcessingAPI.Application.Services.Financial;
 
@@ -12,26 +12,36 @@ namespace DataProcessingAPI.Application.Services.Financial;
 public class RevenueService : IRevenueService
 {
     private readonly IDatabaseService _database;
-
-    // Mapping tên nguồn sang ID cho Revenue
-    private readonly Dictionary<string, int> _nguonMap = new()
-    {
-        { "Hỗ trợ chi thường xuyên từ Nhà nước/nhà đầu tư", 1 },
-        { "Thu giáo dục và đào tạo", 2 },
-        { "Thu khoa học và công nghệ", 3 },
-        { "Thu nhập khác (thu nhập ròng)", 4 }
-    };
+    private Dictionary<string, int>? nguonMap; // 🆕 Sẽ load từ DB
 
     public RevenueService(IDatabaseService database)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
     }
 
+    /// <summary>🔄 LOAD NGUỒN THU TỪ DB (CHỈ GỌI 1 LẦN)</summary>
+    private async Task<Dictionary<string, int>> GetNguonMapAsync()
+    {
+        if (nguonMap == null)
+        {
+            var result = await _database.ExecuteStoredProcAsync("sp_Get_NguonTaiChinh");
+
+            nguonMap = result.AsEnumerable()
+                .Where(row => Convert.ToInt32(row["Loai"]) == 1) // Chỉ lấy THU (Loai = 1)
+                .ToDictionary(
+                    row => row["Ten"].ToString()!,
+                    row => Convert.ToInt32(row["Id"])
+                );
+        }
+
+        return nguonMap;
+    }
+
     /// <summary>📊 BULK IMPORT REVENUE FROM EXCEL</summary>
     public async Task<BulkOperationResultDto> BulkInsertAsync(List<RevenueImportDto> data)
     {
         var result = new BulkOperationResultDto { TotalRows = data.Count };
-        
+
         if (!data.Any())
         {
             result.AddError(AppConstants.NO_DATA_ERROR);
@@ -40,9 +50,12 @@ public class RevenueService : IRevenueService
 
         try
         {
-            var dataTable = CreateDataTable(data);
+            // 🆕 Load nguồn từ DB
+            var nguonMapData = await GetNguonMapAsync();
+            var dataTable = CreateDataTable(data, nguonMapData);
+
             var insertedRows = await _database.BulkInsertAsync(dataTable, DatabaseConstants.REVENUE_TABLE);
-            
+
             result.Success = true;
             result.Message = $"Revenue {AppConstants.BULK_INSERT_SUCCESS}";
             result.ProcessedRows = data.Count;
@@ -68,7 +81,9 @@ public class RevenueService : IRevenueService
         };
 
         var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_GET_THUCHIITAICHINH, parameters);
-        return result.AsEnumerable().Select(MapDataRowToRevenueDto).ToList();
+        var nguonMapData = await GetNguonMapAsync(); // 🆕 Load nguồn để map tên
+
+        return result.AsEnumerable().Select(row => MapDataRowToRevenueDto(row, nguonMapData)).ToList();
     }
 
     /// <summary>🔍 GET REVENUE BY ID</summary>
@@ -131,7 +146,7 @@ public class RevenueService : IRevenueService
     }
 
     // Helper methods
-    private DataTable CreateDataTable(List<RevenueImportDto> data)
+    private DataTable CreateDataTable(List<RevenueImportDto> data, Dictionary<string, int> nguonMap)
     {
         var table = new DataTable();
         table.Columns.Add("ThangTaiChinh", typeof(int));
@@ -150,7 +165,7 @@ public class RevenueService : IRevenueService
             table.Rows.Add(
                 int.TryParse(item.ThangTaiChinh, out int month) ? month : 0,
                 int.TryParse(item.NamTaiChinh, out int year) ? year : 0,
-                GetNguonId(item.TenNguon),
+                GetNguonId(item.TenNguon, nguonMap),
                 item.LoaiThu ?? "",
                 decimal.TryParse(item.SoTien, out decimal amount) ? amount : 0m,
                 item.MoTa ?? "",
@@ -164,12 +179,12 @@ public class RevenueService : IRevenueService
         return table;
     }
 
-    private int GetNguonId(string tenNguon)
+    private static int GetNguonId(string tenNguon, Dictionary<string, int> nguonMap)
     {
-        return _nguonMap.TryGetValue(tenNguon ?? "", out int id) ? id : 0;
+        return nguonMap.TryGetValue(tenNguon ?? "", out int id) ? id : 0;
     }
 
-    private RevenueDto MapDataRowToRevenueDto(DataRow row)
+    private static RevenueDto MapDataRowToRevenueDto(DataRow row, Dictionary<string, int> nguonMap)
     {
         return new RevenueDto
         {
@@ -184,7 +199,7 @@ public class RevenueService : IRevenueService
             ThoiGianNhap = Convert.ToDateTime(row["ThoiGianNhap"]),
             IDNguoiDung = row["IDNguoiDung"]?.ToString() ?? "",
             NguoiNhap = row["NguoiNhap"]?.ToString() ?? "",
-            TenNguon = _nguonMap.FirstOrDefault(x => x.Value == Convert.ToInt32(row["IdNguon"])).Key ?? ""
+            TenNguon = nguonMap.FirstOrDefault(x => x.Value == Convert.ToInt32(row["IdNguon"])).Key ?? ""
         };
     }
 }

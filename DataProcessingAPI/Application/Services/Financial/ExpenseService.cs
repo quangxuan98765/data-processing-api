@@ -1,9 +1,8 @@
-using DataProcessingAPI.Application.Interfaces.Financial;
-using DataProcessingAPI.Application.DTOs;
-using DataProcessingAPI.Shared.Constants;
-using DataAccess;
-using System.Data;
-using System.Globalization;
+using System.Data;                                    // DataTable, DataRow
+using DataProcessingAPI.Application.DTOs;            // ExpenseDto, ExpenseImportDto, BulkOperationResultDto
+using DataProcessingAPI.Application.Interfaces.Financial;  // IExpenseService
+using DataProcessingAPI.Shared.Constants;            // DatabaseConstants, AppConstants
+using DataAccess;                                     // IDatabaseService
 
 namespace DataProcessingAPI.Application.Services.Financial;
 
@@ -13,26 +12,36 @@ namespace DataProcessingAPI.Application.Services.Financial;
 public class ExpenseService : IExpenseService
 {
     private readonly IDatabaseService _database;
-
-    // Mapping tên nguồn sang ID cho Expense
-    private readonly Dictionary<string, int> _expenseNguonMap = new()
-    {
-        { "Chi lương, thu nhập", 5 },
-        { "Chi cơ sở vật chất và dịch vụ", 6 },
-        { "Chi hỗ trợ người học", 7 },
-        { "Chi khác", 8 }
-    };
+    private Dictionary<string, int>? nguonMap; // 🆕 Load từ DB
 
     public ExpenseService(IDatabaseService database)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
     }
 
+    // 🆕 Load nguồn CHI từ DB (Loai = 2)
+    private async Task<Dictionary<string, int>> GetNguonMapAsync()
+    {
+        if (nguonMap == null)
+        {
+            var result = await _database.ExecuteStoredProcAsync("sp_Get_NguonTaiChinh");
+
+            nguonMap = result.AsEnumerable()
+                .Where(row => Convert.ToInt32(row["Loai"]) == 2) // CHỈ lấy CHI (Loai = 2)
+                .ToDictionary(
+                    row => row["Ten"].ToString()!,
+                    row => Convert.ToInt32(row["Id"])
+                );
+        }
+
+        return nguonMap;
+    }
+
     /// <summary>📊 BULK IMPORT EXPENSE FROM EXCEL</summary>
     public async Task<BulkOperationResultDto> BulkInsertAsync(List<ExpenseImportDto> data)
     {
         var result = new BulkOperationResultDto { TotalRows = data.Count };
-        
+
         if (!data.Any())
         {
             result.AddError(AppConstants.NO_DATA_ERROR);
@@ -41,10 +50,11 @@ public class ExpenseService : IExpenseService
 
         try
         {
+            var nguonMap = await GetNguonMapAsync();
             // Create DataTable và bulk insert
-            var dataTable = CreateDataTable(data);
+            var dataTable = CreateDataTable(data, nguonMap);
             var insertedRows = await _database.BulkInsertAsync(dataTable, DatabaseConstants.EXPENSE_TABLE);
-            
+
             result.Success = true;
             result.Message = $"Expense {AppConstants.BULK_INSERT_SUCCESS}";
             result.ProcessedRows = data.Count;
@@ -70,7 +80,8 @@ public class ExpenseService : IExpenseService
         };
 
         var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_GET_THUCHIITAICHINH, parameters);
-        return result.AsEnumerable().Select(MapDataRowToExpenseDto).ToList();
+        var nguonMap = await GetNguonMapAsync();
+        return result.AsEnumerable().Select(row => MapDataRowToExpenseDto(row, nguonMap)).ToList();
     }
 
     /// <summary>🔍 GET EXPENSE BY ID</summary>
@@ -133,7 +144,7 @@ public class ExpenseService : IExpenseService
     }
 
     // Helper methods
-    private DataTable CreateDataTable(List<ExpenseImportDto> data)
+    private DataTable CreateDataTable(List<ExpenseImportDto> data, Dictionary<string, int> nguonMap)
     {
         var table = new DataTable();
         table.Columns.Add("ThangTaiChinh", typeof(int));
@@ -152,7 +163,7 @@ public class ExpenseService : IExpenseService
             table.Rows.Add(
                 int.TryParse(item.ThangTaiChinh, out int month) ? month : 0,
                 int.TryParse(item.NamTaiChinh, out int year) ? year : 0,
-                GetNguonId(item.TenNguon),
+                GetNguonId(item.TenNguon, nguonMap),
                 item.LoaiChi ?? "",
                 decimal.TryParse(item.SoTien, out decimal amount) ? amount : 0m,
                 item.MoTa ?? "",
@@ -166,12 +177,12 @@ public class ExpenseService : IExpenseService
         return table;
     }
 
-    private int GetNguonId(string tenNguon)
+    private int GetNguonId(string tenNguon, Dictionary<string, int> nguonMap)
     {
-        return _expenseNguonMap.TryGetValue(tenNguon ?? "", out int id) ? id : 0;
+        return nguonMap.TryGetValue(tenNguon ?? "", out int id) ? id : 0;
     }
 
-    private ExpenseDto MapDataRowToExpenseDto(DataRow row)
+    private ExpenseDto MapDataRowToExpenseDto(DataRow row, Dictionary<string, int> nguonMap)
     {
         return new ExpenseDto
         {
@@ -186,7 +197,7 @@ public class ExpenseService : IExpenseService
             ThoiGianNhap = Convert.ToDateTime(row["ThoiGianNhap"]),
             IDNguoiDung = row["IDNguoiDung"]?.ToString() ?? "",
             NguoiNhap = row["NguoiNhap"]?.ToString() ?? "",
-            TenNguon = _expenseNguonMap.FirstOrDefault(x => x.Value == Convert.ToInt32(row["IdNguon"])).Key ?? ""
+            TenNguon = nguonMap.FirstOrDefault(x => x.Value == Convert.ToInt32(row["IdNguon"])).Key ?? ""
         };
     }
 }
