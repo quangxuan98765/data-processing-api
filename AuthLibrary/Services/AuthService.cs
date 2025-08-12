@@ -1,70 +1,187 @@
 using AuthLibrary.DTOs;
 using AuthLibrary.Interfaces;
 using AuthLibrary.Models;
-using DataAccess;
-using Microsoft.Data.SqlClient;
+using System;
 using System.Data;
+using System.Threading.Tasks;
 
-namespace AuthLibrary.Services;
-
-/// <summary>
-/// Authentication service implementation - Simplified
-/// </summary>
-public class AuthService : IAuthService
+namespace AuthLibrary.Services
 {
-    private readonly IDatabaseService _databaseService;
-    private readonly IPasswordService _passwordService;
-    private readonly ITokenService _tokenService;
-
-    public AuthService(
-        IDatabaseService databaseService, 
-        IPasswordService passwordService, 
-        ITokenService tokenService)
+    public class AuthService : IAuthService
     {
-        _databaseService = databaseService ?? throw new ArgumentNullException(nameof(databaseService));
-        _passwordService = passwordService ?? throw new ArgumentNullException(nameof(passwordService));
-        _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
-    }
+        private readonly IDatabaseService _databaseService;
+        private readonly IPasswordService _passwordService;
+        private readonly ITokenService _tokenService;
 
-    /// <summary>
-    /// Authenticate user with username and password
-    /// </summary>
-    public async Task<AuthResult> LoginAsync(LoginRequest request)
-    {
-        try
+        public AuthService(IDatabaseService databaseService, IPasswordService passwordService, ITokenService tokenService)
         {
-            // Find user by username
-            var user = await GetUserByUsernameAsync(request.Username);
-            if (user == null)
+            _databaseService = databaseService ?? throw new ArgumentNullException(nameof(databaseService));
+            _passwordService = passwordService ?? throw new ArgumentNullException(nameof(passwordService));
+            _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
+        }
+
+        public async Task<AuthResult> LoginAsync(LoginRequest request)
+        {
+            try
             {
-                return AuthResult.Failed("Invalid username or password");
+                // Use stored proc to get user
+                var userTable = await _databaseService.ExecuteStoredProcAsync("sp_GetUserByUsername", new { Username = request.Username });
+                if (userTable.Rows.Count == 0)
+                    return AuthResult.Failed("Invalid username or password");
+
+                var user = MapToUser(userTable.Rows[0]);
+
+                // Verify password (bcrypt/argon2 done in IPasswordService)
+                if (!_passwordService.VerifyPassword(request.Password, user.Password))
+                    return AuthResult.Failed("Invalid username or password");
+
+                if (!user.IsActive)
+                    return AuthResult.Failed("Account is disabled");
+
+                // Generate token & expiry in app
+                var token = _tokenService.GenerateToken(user); // raw token string
+                var expiry = _tokenService.GetTokenExpiry(); // DateTime (UTC)
+
+                // Store token in DB via SP (SingleSession optional: 0 = allow many)
+                await _databaseService.ExecuteStoredProcAsync("sp_CreateAuthToken", new
+                {
+                    TokenKey = token,
+                    IdUser = user.Id,
+                    ExpireDate = expiry,
+                    SingleSession = 0
+                });
+
+                // Update last login (async, best-effort)
+                _ = _databaseService.ExecuteStoredProcAsync("sp_UpdateLastLogin", new { UserId = user.Id });
+
+                var response = new LoginResponse
+                {
+                    Success = true,
+                    Token = token,
+                    ExpiresAt = expiry,
+                    User = new UserInfo
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        Email = user.Email,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        IsStaff = user.IsStaff,
+                        IsSuperuser = user.IsSuperuser
+                    }
+                };
+
+                return AuthResult.Success(response);
             }
-
-            // Verify password
-            if (!_passwordService.VerifyPassword(request.Password, user.Password))
+            catch (Exception ex)
             {
-                return AuthResult.Failed("Invalid username or password");
+                return AuthResult.Failed($"Authentication error: {ex.Message}");
             }
+        }
 
-            // Check if user is active
-            if (!user.IsActive)
+        public async Task<AuthResult> RegisterAsync(RegisterRequest request)
+        {
+            try
             {
-                return AuthResult.Failed("Account is disabled");
+                // Check username/email exist via SP or simple query
+                var existsByName = await _databaseService.ExecuteStoredProcAsync("sp_GetUserByUsername", new { Username = request.Username });
+                if (existsByName.Rows.Count > 0) return AuthResult.Failed("Username already exists");
+
+                var existsByEmail = await _databaseService.ExecuteStoredProcAsync("sp_GetUserByEmail", new { Email = request.Email });
+                if (existsByEmail.Rows.Count > 0) return AuthResult.Failed("Email already exists");
+
+                // Hash password in app
+                var hashedPassword = _passwordService.HashPassword(request.Password);
+
+                // Create user via SP
+                var dt = await _databaseService.ExecuteStoredProcAsync("sp_CreateUser", new
+                {
+                    Username = request.Username,
+                    Password = hashedPassword,
+                    Email = request.Email,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    IsStaff = false,
+                    IsSuperuser = false,
+                    IsActive = true,
+                    DateJoined = DateTime.UtcNow
+                });
+
+                if (dt.Rows.Count == 0) return AuthResult.Failed("Failed to create user");
+
+                var userId = Convert.ToInt32(dt.Rows[0]["UserId"]);
+                var newUser = await GetUserByIdAsync(userId);
+                if (newUser == null) return AuthResult.Failed("Failed to fetch created user");
+
+                var info = new UserInfo
+                {
+                    Id = newUser.Id,
+                    Username = newUser.Username,
+                    Email = newUser.Email,
+                    FirstName = newUser.FirstName,
+                    LastName = newUser.LastName,
+                    IsStaff = newUser.IsStaff,
+                    IsSuperuser = newUser.IsSuperuser
+                };
+
+                return AuthResult.Success(info);
             }
-
-            // Generate JWT token
-            var token = _tokenService.GenerateToken(user);
-            var expiry = _tokenService.GetTokenExpiry();
-
-            // Store token in database
-            await StoreTokenAsync(user.Id, token, expiry);
-
-            var response = new LoginResponse
+            catch (Exception ex)
             {
-                Success = true,
-                Token = token,
-                ExpiresAt = expiry,
-                User = new UserInfo
+                return AuthResult.Failed($"Registration error: {ex.Message}");
+            }
+        }
+
+        public async Task<AuthResult> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+        {
+            try
+            {
+                var user = await GetUserByIdAsync(userId);
+                if (user == null) return AuthResult.Failed("User not found");
+
+                if (!_passwordService.VerifyPassword(request.CurrentPassword, user.Password))
+                    return AuthResult.Failed("Current password is incorrect");
+
+                var newHash = _passwordService.HashPassword(request.NewPassword);
+
+                var res = await _databaseService.ExecuteStoredProcAsync("sp_ChangePassword", new
+                {
+                    UserId = userId,
+                    NewPassword = newHash
+                });
+
+                if (res.Rows.Count > 0 && Convert.ToInt32(res.Rows[0]["RowsAffected"]) > 0)
+                {
+                    // invalidate all user tokens
+                    await _databaseService.ExecuteStoredProcAsync("sp_InvalidateUserTokens", new { UserId = userId });
+                    return AuthResult.Success("Password changed");
+                }
+
+                return AuthResult.Failed("Failed to change password");
+            }
+            catch (Exception ex)
+            {
+                return AuthResult.Failed($"Change password error: {ex.Message}");
+            }
+        }
+
+        public async Task<AuthResult> ValidateTokenAsync(string token)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                    return AuthResult.Failed("Token is required");
+
+                // Validate signature + expiry and get userId from token claims
+                if (!_tokenService.ValidateToken(token, out int userId))
+                    return AuthResult.Failed("Invalid token");
+
+                // Load user (ensure active)
+                var user = await GetUserByIdAsync(userId);
+                if (user == null || !user.IsActive)
+                    return AuthResult.Failed("User not found or inactive");
+
+                var info = new UserInfo
                 {
                     Id = user.Id,
                     Username = user.Username,
@@ -73,297 +190,54 @@ public class AuthService : IAuthService
                     LastName = user.LastName,
                     IsStaff = user.IsStaff,
                     IsSuperuser = user.IsSuperuser
-                }
-            };
+                };
 
-            return AuthResult.Success(response);
-        }
-        catch (Exception ex)
-        {
-            return AuthResult.Failed($"Authentication error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Register new user
-    /// </summary>
-    public async Task<AuthResult> RegisterAsync(RegisterRequest request)
-    {
-        try
-        {
-            // Check if username already exists
-            var existingUser = await GetUserByUsernameAsync(request.Username);
-            if (existingUser != null)
-            {
-                return AuthResult.Failed("Username already exists");
+                return AuthResult.Success(info);
             }
-
-            // Check if email already exists
-            existingUser = await GetUserByEmailAsync(request.Email);
-            if (existingUser != null)
+            catch (Exception ex)
             {
-                return AuthResult.Failed("Email already exists");
+                return AuthResult.Failed($"Token validation error: {ex.Message}");
             }
+        }
 
-            // Hash password
-            var hashedPassword = _passwordService.HashPassword(request.Password);
 
-            // Create user using ExecuteStoredProcAsync
-            var parameters = new
+        public async Task<AuthResult> LogoutAsync(string token)
+        {
+            try
             {
-                Username = request.Username,
-                Password = hashedPassword,
-                Email = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                IsStaff = false,
-                IsSuperuser = false,
-                IsActive = true,
-                DateJoined = DateTime.UtcNow
-            };
-
-            var result = await _databaseService.ExecuteStoredProcAsync("sp_CreateUser", parameters);
-            
-            if (result.Rows.Count > 0)
-            {
-                var userId = Convert.ToInt32(result.Rows[0]["UserId"]);
-                var newUser = await GetUserByIdAsync(userId);
-                
-                if (newUser != null)
-                {
-                    var userInfo = new UserInfo
-                    {
-                        Id = newUser.Id,
-                        Username = newUser.Username,
-                        Email = newUser.Email,
-                        FirstName = newUser.FirstName,
-                        LastName = newUser.LastName,
-                        IsStaff = newUser.IsStaff,
-                        IsSuperuser = newUser.IsSuperuser
-                    };
-
-                    return AuthResult.Success(userInfo);
-                }
+                await _databaseService.ExecuteStoredProcAsync("sp_InvalidateToken", new { TokenKey = token });
+                return AuthResult.Success("Logged out");
             }
-
-            return AuthResult.Failed("Failed to create user");
-        }
-        catch (Exception ex)
-        {
-            return AuthResult.Failed($"Registration error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Change user password
-    /// </summary>
-    public async Task<AuthResult> ChangePasswordAsync(int userId, ChangePasswordRequest request)
-    {
-        try
-        {
-            var user = await GetUserByIdAsync(userId);
-            if (user == null)
+            catch (Exception ex)
             {
-                return AuthResult.Failed("User not found");
+                return AuthResult.Failed($"Logout error: {ex.Message}");
             }
-
-            // Verify current password
-            if (!_passwordService.VerifyPassword(request.CurrentPassword, user.Password))
-            {
-                return AuthResult.Failed("Current password is incorrect");
-            }
-
-            // Hash new password
-            var hashedPassword = _passwordService.HashPassword(request.NewPassword);
-
-            // Update password
-            var parameters = new
-            {
-                UserId = userId,
-                NewPassword = hashedPassword
-            };
-
-            var result = await _databaseService.ExecuteStoredProcAsync("sp_ChangePassword", parameters);
-
-            if (result.Rows.Count > 0 && Convert.ToInt32(result.Rows[0]["RowsAffected"]) > 0)
-            {
-                // Invalidate all existing tokens for this user
-                await InvalidateUserTokensAsync(userId);
-                return AuthResult.Success("Password changed successfully");
-            }
-
-            return AuthResult.Failed("Failed to change password");
         }
-        catch (Exception ex)
+
+        // helpers
+        private async Task<User?> GetUserByIdAsync(int id)
         {
-            return AuthResult.Failed($"Change password error: {ex.Message}");
+            var dt = await _databaseService.QueryAsync("SELECT * FROM auth_user WHERE id = @Id", new { Id = id });
+            if (dt.Rows.Count == 0) return null;
+            return MapToUser(dt.Rows[0]);
         }
-    }
 
-    /// <summary>
-    /// Validate authentication token
-    /// </summary>
-    public async Task<AuthResult> ValidateTokenAsync(string token)
-    {
-        try
+        private static User MapToUser(DataRow row)
         {
-            // Validate JWT token
-            if (!_tokenService.ValidateToken(token, out int userId))
-            {
-                return AuthResult.Failed("Invalid token");
-            }
-
-            // Check if token exists in database and is not expired
-            var authToken = await GetTokenAsync(token);
-            if (authToken == null || authToken.ExpireDate <= DateTime.UtcNow)
-            {
-                return AuthResult.Failed("Token expired or not found");
-            }
-
-            var user = await GetUserByIdAsync(userId);
-            if (user == null || !user.IsActive)
-            {
-                return AuthResult.Failed("User not found or inactive");
-            }
-
-            var userInfo = new UserInfo
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                IsStaff = user.IsStaff,
-                IsSuperuser = user.IsSuperuser
-            };
-
-            return AuthResult.Success(userInfo);
-        }
-        catch (Exception ex)
-        {
-            return AuthResult.Failed($"Token validation error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Logout user and invalidate token
-    /// </summary>
-    public async Task<AuthResult> LogoutAsync(string token)
-    {
-        try
-        {
-            await InvalidateTokenAsync(token);
-            return AuthResult.Success("Logged out successfully");
-        }
-        catch (Exception ex)
-        {
-            return AuthResult.Failed($"Logout error: {ex.Message}");
-        }
-    }
-
-    // Private helper methods
-    private async Task<User?> GetUserByUsernameAsync(string username)
-    {
-        var parameters = new { Username = username };
-        var result = await _databaseService.QueryAsync("SELECT * FROM auth_user WHERE username = @Username", parameters);
-        
-        if (result.Rows.Count > 0)
-        {
-            var row = result.Rows[0];
-            return MapToUser(row);
-        }
-        
-        return null;
-    }
-
-    private async Task<User?> GetUserByEmailAsync(string email)
-    {
-        var parameters = new { Email = email };
-        var result = await _databaseService.QueryAsync("SELECT * FROM auth_user WHERE email = @Email", parameters);
-        
-        if (result.Rows.Count > 0)
-        {
-            var row = result.Rows[0];
-            return MapToUser(row);
-        }
-        
-        return null;
-    }
-
-    private async Task<User?> GetUserByIdAsync(int id)
-    {
-        var parameters = new { Id = id };
-        var result = await _databaseService.QueryAsync("SELECT * FROM auth_user WHERE id = @Id", parameters);
-        
-        if (result.Rows.Count > 0)
-        {
-            var row = result.Rows[0];
-            return MapToUser(row);
-        }
-        
-        return null;
-    }
-
-    private async Task StoreTokenAsync(int userId, string token, DateTime expiry)
-    {
-        var parameters = new
-        {
-            TokenKey = token,
-            IdUser = userId,
-            ExpireDate = expiry,
-            CreatedDate = DateTime.UtcNow
-        };
-
-        await _databaseService.ExecuteStoredProcAsync("sp_CreateAuthToken", parameters);
-    }
-
-    private async Task<AuthToken?> GetTokenAsync(string token)
-    {
-        var parameters = new { TokenKey = token };
-        var result = await _databaseService.QueryAsync("SELECT * FROM auth_token WHERE token_key = @TokenKey", parameters);
-        
-        if (result.Rows.Count > 0)
-        {
-            var row = result.Rows[0];
-            return new AuthToken
+            return new User
             {
                 Id = Convert.ToInt32(row["id"]),
-                TokenKey = row["token_key"].ToString() ?? string.Empty,
-                IdUser = Convert.ToInt32(row["idUser"]),
-                ExpireDate = Convert.ToDateTime(row["expire_date"])
+                Username = row["username"].ToString() ?? string.Empty,
+                Password = row["password"].ToString() ?? string.Empty,
+                Email = row["email"].ToString() ?? string.Empty,
+                FirstName = row["first_name"].ToString() ?? string.Empty,
+                LastName = row["last_name"].ToString() ?? string.Empty,
+                IsStaff = Convert.ToBoolean(row["is_staff"]),
+                IsSuperuser = Convert.ToBoolean(row["is_superuser"]),
+                IsActive = Convert.ToBoolean(row["is_active"]),
+                DateJoined = Convert.ToDateTime(row["date_joined"]),
+                LastLogin = row["last_login"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(row["last_login"])
             };
         }
-        
-        return null;
-    }
-
-    private async Task InvalidateTokenAsync(string token)
-    {
-        var parameters = new { TokenKey = token };
-        await _databaseService.ExecuteStoredProcAsync("sp_InvalidateToken", parameters);
-    }
-
-    private async Task InvalidateUserTokensAsync(int userId)
-    {
-        var parameters = new { UserId = userId };
-        await _databaseService.ExecuteStoredProcAsync("sp_InvalidateUserTokens", parameters);
-    }
-
-    private static User MapToUser(DataRow row)
-    {
-        return new User
-        {
-            Id = Convert.ToInt32(row["id"]),
-            Username = row["username"].ToString() ?? string.Empty,
-            Password = row["password"].ToString() ?? string.Empty,
-            Email = row["email"].ToString() ?? string.Empty,
-            FirstName = row["first_name"].ToString() ?? string.Empty,
-            LastName = row["last_name"].ToString() ?? string.Empty,
-            IsStaff = Convert.ToBoolean(row["is_staff"]),
-            IsSuperuser = Convert.ToBoolean(row["is_superuser"]),
-            IsActive = Convert.ToBoolean(row["is_active"]),
-            DateJoined = Convert.ToDateTime(row["date_joined"]),
-            LastLogin = row["last_login"] == DBNull.Value ? null : Convert.ToDateTime(row["last_login"])
-        };
     }
 }
