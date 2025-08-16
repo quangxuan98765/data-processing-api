@@ -9,6 +9,7 @@ namespace DataProcessingAPI.Controllers.Financial;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[ApiExplorerSettings(GroupName = "financial")]
 public class ExpenseController : ControllerBase
 {
     private readonly IExpenseService _expenseService;

@@ -1,6 +1,7 @@
 using AuthLibrary.DTOs;
 using AuthLibrary.Interfaces;
 using AuthLibrary.Models;
+using DataAccess;
 using System;
 using System.Data;
 using System.Threading.Tasks;

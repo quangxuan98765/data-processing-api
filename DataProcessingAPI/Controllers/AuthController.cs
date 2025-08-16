@@ -10,6 +10,7 @@ namespace DataProcessingAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[ApiExplorerSettings(GroupName = "auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

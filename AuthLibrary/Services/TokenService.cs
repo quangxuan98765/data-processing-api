@@ -17,7 +17,7 @@ public class TokenService : ITokenService
     private readonly string _audience;
     private readonly int _expiryMinutes;
 
-    public TokenService(string secretKey, string issuer, string audience, int expiryMinutes = ExpiryMinutes)
+    public TokenService(string secretKey, string issuer, string audience, int expiryMinutes = 60)
     {
         _secretKey = secretKey ?? throw new ArgumentNullException(nameof(secretKey));
         _issuer = issuer ?? throw new ArgumentNullException(nameof(issuer));
