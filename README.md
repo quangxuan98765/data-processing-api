@@ -1,35 +1,67 @@
-# 🏢 ExcelDataAPI - Enterprise Data Management System
+# 🏢 DataProcessingAPI - Enterprise Business Management System
 
-> **Clean Architecture .NET 8 Web API for Business Data Management**
+> **Enterprise .NET 8 Web API with JWT Authentication & Power Platform Integration**
 
 ## 🚀 Overview
 
-ExcelDataAPI is a scalable .NET 8 Web API built with Clean Architecture principles for comprehensive business data management. Currently supports Financial Management (Revenue/Expense) with extensibility for HR, Inventory, and other business domains.
+DataProcessingAPI is an enterprise-grade .NET 8 Web API built with Clean Architecture principles for comprehensive business data management. Features JWT authentication, reusable authentication library, and dual API architecture for enterprise scalability.
 
 ### ✨ Key Features
 
-- 🏗️ **Clean Architecture** - Domain-driven design with separation of concerns
-- 💰 **Financial Management** - Revenue and expense tracking with bulk operations
-- 🔄 **CRUD Operations** - Complete data management functionality
+- 🔐 **JWT Authentication** - Secure token-based authentication with BCrypt password hashing
+- 📚 **Reusable AuthLibrary** - Standalone authentication library for code reuse
+- 🏗️ **Enterprise Architecture** - Separate Auth & Financial API documentation
+- 💰 **Financial Management** - Secure revenue and expense tracking with authorization
+- 🔄 **CRUD Operations** - Complete data management with proper security
 - 📊 **Excel Integration** - Bulk import/export with Power Automate
 - ✅ **Data Validation** - Multi-layer validation with business rules
-- 🛡️ **Security** - Parameterized queries, SQL injection protection
-- 🔗 **Power Platform** - Seamless Power Apps and Power Automate integration
-- 📈 **Scalable** - Easy to extend with new business domains
+- 🛡️ **Security** - JWT tokens, [Authorize] attributes, SQL injection protection
+- 🔗 **Power Platform** - Custom Connectors for Power Apps and Power Automate
+- 📈 **Scalable** - Modular design for easy domain extensions
 
 ## 🛠️ Technology Stack
 
 - **.NET 8** - Latest LTS framework
-- **ASP.NET Core** - Web API with Swagger documentation
-- **SQL Server** - Database with bulk operations support
+- **ASP.NET Core** - Web API with dual Swagger documentation
+- **SQL Server** - Database with stored procedures
+- **JWT Authentication** - Secure token-based auth with BCrypt
+- **AuthLibrary** - Reusable authentication components
 - **Clean Architecture** - Domain-driven design pattern
 - **Dependency Injection** - Built-in .NET Core DI
+- **Power Platform** - Custom Connectors for enterprise integration
 
-## 🎯 Current Domains
+## 🏗️ Project Structure
 
-### 💰 Financial Management
-- **Revenue API** - Income tracking and reporting
-- **Expense API** - Cost management and budgeting
+```
+DataProcessingAPI/
+├── AuthLibrary/              # Reusable JWT + BCrypt authentication library
+│   ├── Models/               # User, token models
+│   ├── DTOs/                 # Request/response DTOs
+│   ├── Services/             # Auth, password, token services
+│   ├── Interfaces/           # Service contracts
+│   └── SQL/                  # Database stored procedures
+├── DataAccess/               # Database service layer
+├── DataProcessingAPI/        # Main API project
+│   ├── Controllers/
+│   │   ├── Auth/             # Authentication endpoints
+│   │   └── Financial/        # Financial management (protected)
+│   ├── Application/          # Business logic
+│   ├── Domain/               # Domain entities
+│   └── Shared/               # Common utilities
+└── publish/                  # IIS deployment artifacts
+```
+
+## 🎯 API Architecture
+
+### 🔐 Authentication API (Auth Group)
+- **POST /api/auth/login** - User authentication with JWT token
+- **POST /api/auth/register** - New user registration
+- **POST /api/auth/logout** - Token revocation
+- **POST /api/auth/change-password** - Secure password updates
+
+### 💰 Financial API (Financial Group) - 🔒 Protected
+- **Revenue Management** - Income tracking and reporting (JWT required)
+- **Expense Management** - Cost management and budgeting (JWT required)
 
 ### 🚀 Future Extensions
 - **HR Management** - Employee and payroll systems
@@ -43,32 +75,74 @@ ExcelDataAPI is a scalable .NET 8 Web API built with Clean Architecture principl
 git clone https://github.com/quangxuan98765/excel-data-processing-api
 
 # Navigate to project
-cd ExcelDataAPI
+cd DataProcessingAPI
 
-# Configure database connection in appsettings.json
+# Setup database (run SQL scripts)
+# 1. Run AuthLibrary/SQL/AuthStoredProcedures.sql
+# 2. Configure connection string in appsettings.json
+
+# Configure JWT settings in appsettings.json
+{
+  "JwtSettings": {
+    "SecretKey": "YourSecretKey32CharactersMinimum!",
+    "Issuer": "DataProcessingAPI",
+    "Audience": "DataProcessingAPI",
+    "ExpiryMinutes": 60
+  }
+}
+
 # Run the API
 dotnet run
 ```
 
-**Swagger UI**: `https://localhost:7xxx/swagger`
+**Swagger Documentation**:
+- **Auth API**: `https://localhost:7xxx/swagger-auth` 
+- **Financial API**: `https://localhost:7xxx/swagger-financial`
+
+## 🔐 Authentication Flow
+
+1. **Register/Login** → Get JWT token
+2. **Include token** in Authorization header: `Bearer <token>`
+3. **Access protected endpoints** (Financial APIs require authentication)
+
+```http
+# Login
+POST /api/auth/login
+{ "username": "admin", "password": "Password123!" }
+
+# Use token for protected endpoints
+GET /api/expense
+Authorization: Bearer <your-jwt-token>
+```
 
 ## 📊 API Endpoints
 
-### Revenue Management
+### Authentication Endpoints
 ```
-POST /api/revenue/import                    # Bulk import with built-in validation
-```
-
-### Expense Management
-```
-POST /api/expense/import                    # Bulk import with built-in validation
+POST /api/auth/login                        # User login with JWT token
+POST /api/auth/register                     # New user registration  
+POST /api/auth/logout                       # Token revocation
+POST /api/auth/change-password              # Password updates
 ```
 
-## 🔗 Integration
+### Financial Endpoints (🔒 JWT Required)
+```
+POST /api/revenue/import                    # Bulk import with validation
+GET  /api/revenue                           # Get revenue records
+POST /api/expense/import                    # Bulk import with validation  
+GET  /api/expense                           # Get expense records
+```
 
-- **Power Automate** - Excel file processing workflows
-- **Power Apps** - Form-based data entry
-- **SharePoint** - Document storage and management
+## 🔗 Power Platform Integration
+
+### Custom Connectors
+- **Auth Connector** - Authentication operations for Power Apps login
+- **Financial Connector** - Protected financial data operations
+
+### Power Apps Integration
+- **Login Flow** - JWT authentication with Custom Connector
+- **Data Management** - CRUD operations with proper authorization
+- **Excel Import** - Bulk data processing via Power Automate
 
 ## 📄 License
 

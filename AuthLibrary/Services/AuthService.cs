@@ -236,8 +236,9 @@ namespace AuthLibrary.Services
                 IsStaff = Convert.ToBoolean(row["is_staff"]),
                 IsSuperuser = Convert.ToBoolean(row["is_superuser"]),
                 IsActive = Convert.ToBoolean(row["is_active"]),
-                DateJoined = Convert.ToDateTime(row["date_joined"]),
-                LastLogin = row["last_login"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(row["last_login"])
+                DateJoined = row["date_joined"] is DateTimeOffset dto1 ? dto1.DateTime : Convert.ToDateTime(row["date_joined"]),
+                LastLogin = row["last_login"] == DBNull.Value ? (DateTime?)null : 
+                        (row["last_login"] is DateTimeOffset dto2 ? dto2.DateTime : Convert.ToDateTime(row["last_login"]))
             };
         }
     }

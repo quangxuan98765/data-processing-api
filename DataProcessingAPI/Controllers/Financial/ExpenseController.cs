@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using DataProcessingAPI.Application.Interfaces.Financial;
 using DataProcessingAPI.Application.DTOs;
 
@@ -9,6 +10,7 @@ namespace DataProcessingAPI.Controllers.Financial;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 [ApiExplorerSettings(GroupName = "financial")]
 public class ExpenseController : ControllerBase
 {
