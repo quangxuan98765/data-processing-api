@@ -80,7 +80,7 @@ public class RevenueService : IRevenueService
             { "@LoaiNguon", DatabaseConstants.LOAI_THU }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_GET_THUCHIITAICHINH, parameters);
+        var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
         var nguonMapData = await GetNguonMapAsync(); // 🆕 Load nguồn để map tên
 
         return result.AsEnumerable().Select(row => MapDataRowToRevenueDto(row, nguonMapData)).ToList();

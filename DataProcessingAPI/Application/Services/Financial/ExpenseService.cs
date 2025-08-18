@@ -79,7 +79,7 @@ public class ExpenseService : IExpenseService
             { "@LoaiNguon", DatabaseConstants.LOAI_CHI }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_GET_THUCHIITAICHINH, parameters);
+        var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
         var nguonMap = await GetNguonMapAsync();
         return result.AsEnumerable().Select(row => MapDataRowToExpenseDto(row, nguonMap)).ToList();
     }

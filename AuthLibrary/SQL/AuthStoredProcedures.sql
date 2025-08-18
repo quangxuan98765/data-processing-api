@@ -215,4 +215,32 @@ BEGIN
 END
 GO
 
+-- 10) sp_CleanExpiredTokens - CLEANUP EXPIRED TOKENS  
+IF OBJECT_ID(N'dbo.sp_CleanExpiredTokens','P') IS NOT NULL
+    DROP PROCEDURE dbo.sp_CleanExpiredTokens;
+GO
+CREATE PROCEDURE dbo.sp_CleanExpiredTokens
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        DECLARE @DeletedCount INT;
+        
+        DELETE FROM dbo.auth_token 
+        WHERE expires_at < GETUTCDATE();
+        
+        SET @DeletedCount = @@ROWCOUNT;
+        
+        SELECT 
+            @DeletedCount AS DeletedTokens,
+            'Expired tokens cleaned successfully' AS Message;
+    END TRY
+    BEGIN CATCH
+        SELECT 
+            0 AS DeletedTokens,
+            'Error cleaning tokens: ' + ERROR_MESSAGE() AS Message;
+    END CATCH
+END
+GO
+
 PRINT 'Auth SPs deployed.';
