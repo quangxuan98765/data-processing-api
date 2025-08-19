@@ -142,29 +142,7 @@ BEGIN
 END
 GO
 
--- 6) sp_CleanExpiredTokens
-IF OBJECT_ID(N'dbo.sp_CleanExpiredTokens','P') IS NOT NULL
-    DROP PROCEDURE dbo.sp_CleanExpiredTokens;
-GO
-CREATE PROCEDURE dbo.sp_CleanExpiredTokens
-AS
-BEGIN
-    SET NOCOUNT ON;
-    BEGIN TRY
-        BEGIN TRAN;
-        DELETE FROM dbo.auth_token WHERE expire_date <= GETDATE();
-        DECLARE @Removed INT = @@ROWCOUNT;
-        COMMIT TRAN;
-        SELECT @Removed AS TokensRemoved;
-    END TRY
-    BEGIN CATCH
-        IF XACT_STATE() <> 0 ROLLBACK TRAN;
-        THROW;
-    END CATCH
-END
-GO
-
--- 7) sp_GetUserByUsername
+-- 6) sp_GetUserByUsername
 IF OBJECT_ID(N'dbo.sp_GetUserByUsername','P') IS NOT NULL
     DROP PROCEDURE dbo.sp_GetUserByUsername;
 GO
@@ -180,7 +158,7 @@ BEGIN
 END
 GO
 
--- 8) sp_UpdateLastLogin
+-- 7) sp_UpdateLastLogin
 IF OBJECT_ID(N'dbo.sp_UpdateLastLogin','P') IS NOT NULL
     DROP PROCEDURE dbo.sp_UpdateLastLogin;
 GO
@@ -199,7 +177,7 @@ BEGIN
 END
 GO
 
--- 9) sp_GetUserByEmail
+-- 8) sp_GetUserByEmail
 IF OBJECT_ID(N'dbo.sp_GetUserByEmail','P') IS NOT NULL
     DROP PROCEDURE dbo.sp_GetUserByEmail;
 GO
@@ -215,7 +193,27 @@ BEGIN
 END
 GO
 
--- 10) sp_CleanExpiredTokens - CLEANUP EXPIRED TOKENS  
+-- 9) sp_GetTokenByUserId - GET ACTIVE TOKEN BY USER ID
+IF OBJECT_ID(N'dbo.sp_GetTokenByUserId','P') IS NOT NULL
+    DROP PROCEDURE dbo.sp_GetTokenByUserId;
+GO
+CREATE PROCEDURE dbo.sp_GetTokenByUserId
+    @UserId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TOP 1 
+        token_key,
+        expire_date,
+        idUser
+    FROM dbo.auth_token 
+    WHERE idUser = @UserId 
+      AND expire_date > GETDATE()  -- Chỉ lấy token chưa hết hạn
+    ORDER BY expire_date DESC;     -- Lấy token mới nhất
+END
+GO
+
+-- 10) sp_CleanExpiredTokens - CLEANUP EXPIRED TOKENS
 IF OBJECT_ID(N'dbo.sp_CleanExpiredTokens','P') IS NOT NULL
     DROP PROCEDURE dbo.sp_CleanExpiredTokens;
 GO
@@ -227,7 +225,7 @@ BEGIN
         DECLARE @DeletedCount INT;
         
         DELETE FROM dbo.auth_token 
-        WHERE expires_at < GETUTCDATE();
+        WHERE expire_date < GETDATE();  -- Sử dụng expire_date thay vì expires_at
         
         SET @DeletedCount = @@ROWCOUNT;
         
