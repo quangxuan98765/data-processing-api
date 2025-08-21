@@ -1,27 +1,31 @@
-# 🔐 AuthLibr## 📋 Requirements
+# 🔐 AuthLibr## 📋 Quick Setup
 
-### Database Setup
-- **Tables**: `auth_user`, `auth_token` (auto-created by stored procedures)
-- **Stored Procedures**: Run `SQL/AuthStoredProcedures.sql` once (idempotent; safe to re-run)
+### Dependencies
+- **.NET 8** + your existing DataAccess layer
+- **SQL Server** with `auth_user`, `auth_token` tables
+- Run `SQL/AuthStoredProcedures.sql` once (includes `sp_GetTokenByUserId` for Power Platform)
 
-### Dependencies  
-- **.NET 8** - Target framework
-- **DataAccess** - Your existing database service layer
-- **Microsoft.IdentityModel.Tokens** - JWT operations
-- **BCrypt.Net-Next** - Password hashing
+### Configuration
+1. Add project reference to AuthLibrary
+2. Configure JWT settings in `appsettings.json` 
+3. Register services in `Program.cs` (see examples in project)
+4. Add `[Authorize]` to protected endpoints
 
-💡 **Tip**: Keep the SQL file in source control. You don't need to delete it after running - it's designed for version control and team collaboration. Enterprise JWT Authentication
+⚠️ **Important**: Ensure `auth_token.token_key` is `NVARCHAR(1000)` - JWT tokens are 400-600 characters! Enterprise JWT Authentication
 
-A production-ready, reusable authentication library for .NET 8 APIs. Provides complete JWT token management with BCrypt password hashing, designed for enterprise scalability and code reuse across multiple projects.
+# 🔐 AuthLibrary - Enterprise JWT Authentication
 
-## ✨ What You Get
-- 🔑 **JWT Token Management** - Generation, validation, and revocation
-- 🔒 **BCrypt Password Hashing** - Secure password storage and verification  
-- 👤 **User Management** - Registration, login, password changes
-- 🛡️ **Security Features** - Token expiration, logout, session management
-- 🏗️ **Clean Architecture** - Service interfaces for easy testing and DI
-- 📊 **Database Integration** - Works with existing DataAccess layer (no duplication)
-- 🔄 **Reusable Design** - Drop-in authentication for any .NET API
+Production-ready JWT authentication for .NET 8 APIs with Power Platform integration. Drop-in solution for secure multi-user applications.
+
+**✨ Power Apps Ready** - Dynamic JWT authentication without exposing tokens to end users.
+
+## ✨ Features
+- 🔑 **JWT Management** - Generate, validate, revoke tokens
+- 🔒 **BCrypt Security** - Industry-standard password hashing  
+- 👤 **User System** - Registration, login, session management
+- ⚡ **Power Platform Ready** - Custom Connector integration
+- 🔐 **Dynamic Tokens** - SQL-based token retrieval for multi-user apps
+- 🏗️ **Clean Architecture** - Service interfaces, dependency injection ready
 
 ## Requirements
 - Tables: auth_user, auth_token
@@ -29,223 +33,100 @@ A production-ready, reusable authentication library for .NET 8 APIs. Provides co
 
 Tip: Keep the SQL file in source control. You don’t need to delete it after running.
 
-## 🚀 Quick Start
+## 🚀 Standard API Usage
 
-### 1️⃣ Add Project Reference
-```xml
-<ProjectReference Include="..\AuthLibrary\AuthLibrary.csproj" />
+### Endpoints Available
+- `POST /api/auth/login` - Returns JWT + user info
+- `POST /api/auth/register` - Create new user
+- `POST /api/auth/logout` - Revoke token
+
+### Protected Routes
+Add `[Authorize]` to any controller/action. JWT validation automatic.
+
+### Client Integration
+Include `Authorization: Bearer {token}` header in requests.
+
+## 🔄 Power Platform Integration
+
+**The Problem**: Power Apps users need secure API access, but JWT tokens shouldn't be exposed to end users.
+
+**The Solution**: Dynamic token retrieval via Power Automate flows.
+
+### Architecture Flow
+```
+Power Apps (userId only) → Power Automate Flow → Custom Connector → C# API
+                            ↓                        ↓           ↓
+                    sp_GetTokenByUserId        X-Authorization  [Authorize]
+                            ↓                        ↓      validates JWT
+                      Fresh Token            Policy Transform
 ```
 
-### 2️⃣ Configure JWT Settings (appsettings.json)
-```json
-{
-  "JwtSettings": {
-    "SecretKey": "YourSecretKey32CharactersMinimum!",
-    "Issuer": "YourApiName",
-    "Audience": "YourApiName", 
-    "ExpiryMinutes": 60
-  }
-}
-```
+### Setup Process
 
-### 3️⃣ Register Services (Program.cs)
-```csharp
-using AuthLibrary.Interfaces;
-using AuthLibrary.Services;
-using DataAccess;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+#### 1. **Login Flow** (One-time per user)
+- Power Apps → Flow → API login → Store token in SQL → Return user info only
 
-// Register DataAccess and AuthLibrary services
-builder.Services.AddScoped<IDatabaseService, DatabaseService>();
-builder.Services.AddScoped<IPasswordService, PasswordService>();
+#### 2. **CRUD Flow** (Dynamic token per request)  
+- Power Apps → Flow → SQL gets token → Custom Connector → API with JWT
 
-// Configure JWT services
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-builder.Services.AddScoped<ITokenService>(_ => new TokenService(
-    jwtSettings["SecretKey"]!, 
-    jwtSettings["Issuer"]!, 
-    jwtSettings["Audience"]!, 
-    int.Parse(jwtSettings["ExpiryMinutes"] ?? "60")
-));
-builder.Services.AddScoped<IAuthService, AuthService>();
+#### 3. **Custom Connector Configuration**
+- Use `X-Authorization` header parameter (Power Automate restriction)
+- Policy transforms `X-Authorization` → `Authorization`
+- No `securityDefinitions` in OpenAPI spec
 
-// Configure JWT Authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!))
-        };
-    });
+#### 4. **Policy Setup**
+- **Header name**: `Authorization`
+- **Header value**: `@headers('X-Authorization')`
+- **Action**: `override`
 
-builder.Services.AddAuthorization();
-```
+### Key Benefits
+- ✅ **Zero Token Exposure** - Users never see JWTs
+- ✅ **Enterprise Security** - Individual tokens per user
+- ✅ **Fresh Tokens** - Retrieved dynamically per request
+- ✅ **Standard Validation** - C# API `[Authorize]` works normally
 
-### 4️⃣ Run Database Setup
-Execute `AuthLibrary/SQL/AuthStoredProcedures.sql` in your SQL Server database once.
+## 🏗️ Technical Overview
 
-## 💻 Implementation Examples
+### Core Components
+- **IAuthService** - Login, register, logout operations
+- **ITokenService** - JWT generation and validation
+- **IPasswordService** - BCrypt hashing
 
-### Authentication Controller
-```csharp
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using AuthLibrary.Interfaces;
-using AuthLibrary.DTOs;
-using System.Security.Claims;
+### Database Layer
+- **auth_user** - User accounts with secure password storage
+- **auth_token** - JWT tokens with expiry tracking
+- **Stored Procedures** - All operations use SPs for performance and security
 
-[ApiController]
-[Route("api/auth")]
-[ApiExplorerSettings(GroupName = "auth")]
-public class AuthController : ControllerBase
-{
-    private readonly IAuthService _authService;
-    
-    public AuthController(IAuthService authService) 
-        => _authService = authService;
+### Integration Pattern
+- Works with existing DataAccess layer (no duplication)
+- Interface-based design for testing and DI
+- Reusable across multiple projects
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
-    {
-        var result = await _authService.LoginAsync(request);
-        return result.IsSuccess 
-            ? Ok(result.Data) 
-            : BadRequest(result.ErrorMessage);
-    }
+## 🔧 Maintenance
 
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
-    {
-        var result = await _authService.RegisterAsync(request);
-        return result.IsSuccess 
-            ? Ok(result.Data) 
-            : BadRequest(result.ErrorMessage);
-    }
-
-    [HttpPost("logout")]
-    [Authorize]
-    public async Task<IActionResult> Logout()
-    {
-        var token = HttpContext.Request.Headers["Authorization"]
-            .ToString().Replace("Bearer ", "");
-        var result = await _authService.LogoutAsync(token);
-        return result.IsSuccess ? Ok() : BadRequest(result.ErrorMessage);
-    }
-}
-```
-
-### Protecting Endpoints
-```csharp
-[ApiController]
-[Route("api/financial")]
-[Authorize] // Requires JWT token
-[ApiExplorerSettings(GroupName = "financial")]
-public class FinancialController : ControllerBase
-{
-    [HttpGet("expenses")]
-    public IActionResult GetExpenses()
-    {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        // Your protected business logic here
-        return Ok(new { message = "Protected data", userId });
-    }
-}
-```
-
-## 📡 API Usage Examples
-
-### User Registration
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "username": "newuser",
-  "email": "user@company.com", 
-  "password": "SecurePassword123!",
-  "fullName": "John Doe"
-}
-```
-
-### User Login
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "newuser",
-  "password": "SecurePassword123!"
-}
-
-Response:
-{
-  "token": "eyJhbGciOiJIUzI1NiIs...",
-  "expiry": "2025-08-17T10:30:00Z",
-  "user": {
-    "userId": 1,
-    "username": "newuser",
-    "email": "user@company.com"
-  }
-}
-```
-
-### Accessing Protected Endpoints
-```http
-GET /api/financial/expenses
-Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
-```
-
-## 🏗️ Architecture & Services
-
-### Core Services
-- **`IAuthService`** - High-level authentication operations (login, register, logout)
-- **`ITokenService`** - JWT token generation, validation, and management
-- **`IPasswordService`** - BCrypt password hashing and verification
-
-### Data Models
-- **`AuthUser`** - User entity with secure password storage
-- **`AuthToken`** - JWT token tracking for revocation support
-- **`LoginRequest/RegisterRequest`** - Request DTOs with validation
-- **`LoginResponse`** - Response DTO with token and user info
-
-## 🔧 Maintenance & Best Practices
-
-### Token Cleanup (Optional)
+### Routine Tasks
 ```sql
--- Run periodically to clean expired tokens
+-- Clean expired tokens periodically
 EXEC sp_CleanExpiredTokens;
 ```
 
-### Security Considerations
-- ✅ **Secret Key**: Use strong 32+ character secret keys in production
-- ✅ **Token Expiry**: Configure appropriate expiry times (60 minutes default)
-- ✅ **HTTPS Only**: Always use HTTPS in production environments
-- ✅ **Password Policy**: Enforce strong passwords in your validation layer
-- ✅ **Token Revocation**: Logout properly revokes tokens from database
+### Troubleshooting
+- **401 Unauthorized**: Check token expiry, JWT secret key, or column size
+- **Token Truncated**: Ensure `token_key` column is NVARCHAR(1000)+
+- **Power Automate Policy**: Verify `X-Authorization` → `Authorization` transform
 
-### Integration Notes
-- 🏗️ **Modular Design**: AuthLibrary focuses only on authentication concerns
-- 🔌 **Drop-in Ready**: Easy integration with existing .NET APIs
-- 📊 **Database Agnostic**: Uses your existing DataAccess layer
-- 🔄 **Reusable**: One library, multiple projects/APIs
-- 🧪 **Testable**: Interface-based design for easy unit testing
+### Security Best Practices
+- ✅ **Strong JWT Secrets** - 32+ character keys in production
+- ✅ **HTTPS Only** - Never transmit tokens over HTTP
+- ✅ **Token Expiry** - Configure appropriate timeouts (60 min default)
+- ✅ **Token Revocation** - Logout properly invalidates tokens
+- ✅ **Password Policy** - Enforce strong passwords in validation
 
-### Production Deployment
-1. **Environment Variables**: Store JWT secrets securely
-2. **Database Migration**: Include SQL scripts in deployment pipeline  
-3. **Health Checks**: Monitor authentication service availability
-4. **Logging**: AuthService includes comprehensive error logging
+### Deployment
+- Store JWT secrets in environment variables/secure config
+- Include SQL scripts in deployment pipeline
+- Test Custom Connector policies in dev environment first
 
 ---
 
-💡 **Enterprise Ready**: Built for production use with proper error handling, security best practices, and scalable architecture.
+💡 **Enterprise Authentication**: Complete JWT solution with Power Platform integration for secure multi-user applications.
