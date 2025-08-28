@@ -2,89 +2,109 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using DataProcessingAPI.Application.Interfaces.Financial;
 using DataProcessingAPI.Application.DTOs;
+using DataProcessingAPI.Controllers.Base;
 
 namespace DataProcessingAPI.Controllers.Financial;
 
-/// <summary>
-/// Expense Controller - EXCEL IMPORT + CRUD VỚI STORED PROCEDURES
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
 [ApiExplorerSettings(GroupName = "financial")]
-public class ExpenseController : ControllerBase
+public class ExpenseController : BaseApiController
 {
     private readonly IExpenseService _expenseService;
 
-    public ExpenseController(IExpenseService expenseService)
+    public ExpenseController(IExpenseService expenseService, ILogger<ExpenseController> logger)
+        : base(logger)
     {
         _expenseService = expenseService ?? throw new ArgumentNullException(nameof(expenseService));
     }
 
-    /// <summary>📊 BULK IMPORT EXPENSE FROM EXCEL</summary>
     [HttpPost("bulk-import")]
     public async Task<IActionResult> BulkImport([FromBody] List<ExpenseImportDto> data)
     {
         if (data == null || !data.Any())
-            return BadRequest("Không có dữ liệu để import");
+        {
+            _logger.LogWarning("Bulk import attempted with no data");
+            return HandleError("Không có dữ liệu để import", 400);
+        }
 
-        var result = await _expenseService.BulkInsertAsync(data);
-        
-        return result.Success ? Ok(result) : BadRequest(result);
+        try
+        {
+            _logger.LogInformation("Starting bulk import for {Count} expense records", data.Count);
+            var result = await _expenseService.BulkInsertAsync(data);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation("Bulk import completed successfully");
+                return HandleSuccess(result, "Bulk import successful");
+            }
+
+            _logger.LogWarning("Bulk import failed: {Message}", result.Message);
+            return HandleError(result.Message, 400);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk import operation");
+            return HandleError("An error occurred while processing your request");
+        }
     }
 
-    /// <summary>📋 GET ALL EXPENSES</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var expenses = await _expenseService.GetAllAsync();
-        return Ok(expenses);
+        return await ExecuteAsync(() => _expenseService.GetAllAsync(), "get all expenses", "Data retrieved successfully");
     }
 
-    /// <summary>🔍 GET EXPENSE BY ID</summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var expense = await _expenseService.GetByIdAsync(id);
-        return expense != null ? Ok(expense) : NotFound($"Expense with ID {id} not found");
+        return await ExecuteAsync(async () =>
+        {
+            var expense = await _expenseService.GetByIdAsync(id);
+            if (expense == null)
+            {
+                _logger.LogWarning("Expense with ID {Id} not found", id);
+                throw new KeyNotFoundException($"Expense with ID {id} not found");
+            }
+            return expense;
+        }, $"get expense {id}", "Data retrieved successfully");
     }
 
-    /// <summary>➕ CREATE EXPENSE</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ExpenseDto expense)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var validation = ValidateModel();
+        if (validation != null) return validation;
 
-        var newId = await _expenseService.CreateAsync(expense);
-        
-        return newId > 0 
-            ? CreatedAtAction(nameof(GetById), new { id = newId }, new { Id = newId, Message = "Created successfully" })
-            : BadRequest("Failed to create expense");
+        return await ExecuteAsync(
+            () => _expenseService.CreateAsync(expense),
+            "create expense",
+            "Expense created successfully",
+            201
+        );
     }
 
-    /// <summary>✏️ UPDATE EXPENSE</summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] ExpenseDto expense)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var validation = ValidateModel();
+        if (validation != null) return validation;
 
-        var result = await _expenseService.UpdateAsync(id, expense);
-        
-        return result > 0 
-            ? Ok(new { Id = id, Message = "Updated successfully" })
-            : BadRequest("Failed to update expense");
+        return await ExecuteAsync(
+            () => _expenseService.UpdateAsync(id, expense),
+            $"update expense {id}",
+            "Expense updated successfully"
+        );
     }
 
-    /// <summary>❌ DELETE EXPENSE</summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var result = await _expenseService.DeleteAsync(id);
-        
-        return result > 0 
-            ? Ok(new { Id = id, Message = "Deleted successfully" })
-            : BadRequest("Failed to delete expense");
+        return await ExecuteAsync(
+            () => _expenseService.DeleteAsync(id),
+            $"delete expense {id}",
+            "Expense deleted successfully"
+        );
     }
 }
