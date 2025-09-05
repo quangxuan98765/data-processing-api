@@ -108,8 +108,8 @@ public class RevenueService : IRevenueService
             { "@NguoiNhap", revenue.NguoiNhap ?? "" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_INSERT_THUCHIHOATDONG, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Insert_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     /// <summary>✏️ UPDATE REVENUE</summary>
