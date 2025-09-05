@@ -56,44 +56,10 @@ public class RevenueDto
 }
 
 /// <summary>
-/// Revenue Response DTO - For API responses (GET operations)
+/// Revenue Request DTO - For CREATE and UPDATE operations
+/// Covers both POST /api/revenue and PUT /api/revenue/{id}
 /// </summary>
-public class RevenueResponse
-{
-    public int Id { get; set; }
-    public int ThangTaiChinh { get; set; }
-    public int NamTaiChinh { get; set; }
-    public int IdNguon { get; set; }
-    public string TenNguon { get; set; } = string.Empty; // For display
-    public string LoaiThu { get; set; } = string.Empty;
-    public decimal SoTien { get; set; }
-    public string MoTa { get; set; } = string.Empty;
-    public string GhiChu { get; set; } = string.Empty;
-    public DateTime ThoiGianNhap { get; set; }
-    public string IDNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Revenue Create Request DTO - For API POST requests
-/// </summary>
-public class CreateRevenueRequest
-{
-    public int ThangTaiChinh { get; set; }
-    public int NamTaiChinh { get; set; }
-    public int IdNguon { get; set; } // Direct IdNguon from client
-    public string LoaiThu { get; set; } = string.Empty;
-    public decimal SoTien { get; set; }
-    public string MoTa { get; set; } = string.Empty;
-    public string GhiChu { get; set; } = string.Empty;
-    public string IDNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Revenue Update Request DTO - For API PUT requests
-/// </summary>
-public class UpdateRevenueRequest
+public class RevenueRequest
 {
     public int ThangTaiChinh { get; set; }
     public int NamTaiChinh { get; set; }
@@ -127,6 +93,41 @@ public class ExpenseDto
 }
 
 /// <summary>
+/// Revenue Response DTO - For API responses (GET operations)
+/// </summary>
+public class RevenueResponse
+{
+    public int Id { get; set; }
+    public int ThangTaiChinh { get; set; }
+    public int NamTaiChinh { get; set; }
+    public int IdNguon { get; set; }
+    public string TenNguon { get; set; } = string.Empty; // For display
+    public string LoaiThu { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
+    public DateTime ThoiGianNhap { get; set; }
+    public string IDNguoiDung { get; set; } = string.Empty;
+    public string NguoiNhap { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Expense Request DTO - For CREATE and UPDATE operations
+/// </summary>
+public class ExpenseRequest
+{
+    public int ThangTaiChinh { get; set; }
+    public int NamTaiChinh { get; set; }
+    public int IdNguon { get; set; }
+    public string LoaiChi { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
+    public string IDNguoiDung { get; set; } = string.Empty;
+    public string NguoiNhap { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// Expense Response DTO - For API responses (GET operations)
 /// </summary>
 public class ExpenseResponse
@@ -141,38 +142,6 @@ public class ExpenseResponse
     public string MoTa { get; set; } = string.Empty;
     public string GhiChu { get; set; } = string.Empty;
     public DateTime ThoiGianNhap { get; set; }
-    public string IDNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Expense Create Request DTO - For API POST requests
-/// </summary>
-public class CreateExpenseRequest
-{
-    public int ThangTaiChinh { get; set; }
-    public int NamTaiChinh { get; set; }
-    public int IdNguon { get; set; }
-    public string LoaiChi { get; set; } = string.Empty;
-    public decimal SoTien { get; set; }
-    public string MoTa { get; set; } = string.Empty;
-    public string GhiChu { get; set; } = string.Empty;
-    public string IDNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Expense Update Request DTO - For API PUT requests
-/// </summary>
-public class UpdateExpenseRequest
-{
-    public int ThangTaiChinh { get; set; }
-    public int NamTaiChinh { get; set; }
-    public int IdNguon { get; set; }
-    public string LoaiChi { get; set; } = string.Empty;
-    public decimal SoTien { get; set; }
-    public string MoTa { get; set; } = string.Empty;
-    public string GhiChu { get; set; } = string.Empty;
     public string IDNguoiDung { get; set; } = string.Empty;
     public string NguoiNhap { get; set; } = string.Empty;
 }

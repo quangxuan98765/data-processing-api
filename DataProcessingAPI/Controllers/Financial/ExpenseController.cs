@@ -72,12 +72,12 @@ public class ExpenseController : BaseApiController
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateExpenseRequest request)
+    public async Task<IActionResult> Create([FromBody] ExpenseRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        // Convert CreateExpenseRequest to ExpenseDto for service
+        // Convert ExpenseRequest to ExpenseDto for service
         var expense = new ExpenseDto
         {
             ThangTaiChinh = request.ThangTaiChinh,
@@ -101,12 +101,12 @@ public class ExpenseController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateExpenseRequest request)
+    public async Task<IActionResult> Update(int id, [FromBody] ExpenseRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        // Convert UpdateExpenseRequest to ExpenseDto for service
+        // Convert ExpenseRequest to ExpenseDto for service
         var expense = new ExpenseDto
         {
             Id = id,

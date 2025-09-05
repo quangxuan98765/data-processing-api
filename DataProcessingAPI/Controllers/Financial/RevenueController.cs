@@ -79,12 +79,12 @@ public class RevenueController : BaseApiController
 
     /// <summary>➕ CREATE REVENUE</summary>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateRevenueRequest request)
+    public async Task<IActionResult> Create([FromBody] RevenueRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        // Convert CreateRevenueRequest to RevenueDto for service
+        // Convert RevenueRequest to RevenueDto for service
         var revenue = new RevenueDto
         {
             ThangTaiChinh = request.ThangTaiChinh,
@@ -109,12 +109,12 @@ public class RevenueController : BaseApiController
 
     /// <summary>✏️ UPDATE REVENUE</summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateRevenueRequest request)
+    public async Task<IActionResult> Update(int id, [FromBody] RevenueRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        // Convert UpdateRevenueRequest to RevenueDto for service
+        // Convert RevenueRequest to RevenueDto for service
         var revenue = new RevenueDto
         {
             Id = id,
