@@ -58,10 +58,25 @@ DataProcessingAPI/
 - **POST /api/auth/register** - New user registration
 - **POST /api/auth/logout** - Token revocation
 - **POST /api/auth/change-password** - Secure password updates
+- **GET /api/auth/profile** - Get user profile
 
-### 💰 Financial API (Financial Group) - 🔒 Protected
-- **Revenue Management** - Income tracking and reporting (JWT required)
-- **Expense Management** - Cost management and budgeting (JWT required)
+### 💰 Financial API (Financial Group) - 🔒 JWT Protected
+
+#### Revenue Management
+- **GET /api/revenue** - Get all revenue records
+- **GET /api/revenue/{id}** - Get specific revenue by ID
+- **POST /api/revenue** - Create new revenue record
+- **PUT /api/revenue/{id}** - Update existing revenue
+- **DELETE /api/revenue/{id}** - Delete revenue record
+- **POST /api/revenue/bulk-import** - Excel bulk import with validation
+
+#### Expense Management  
+- **GET /api/expense** - Get all expense records
+- **GET /api/expense/{id}** - Get specific expense by ID
+- **POST /api/expense** - Create new expense record
+- **PUT /api/expense/{id}** - Update existing expense
+- **DELETE /api/expense/{id}** - Delete expense record
+- **POST /api/expense/bulk-import** - Excel bulk import with validation
 
 ### 🚀 Future Extensions
 - **HR Management** - Employee and payroll systems
@@ -115,6 +130,31 @@ GET /api/expense
 Authorization: Bearer <your-jwt-token>
 ```
 
+## 📊 Enterprise DTOs & Clean Architecture
+
+### Request/Response Pattern
+```csharp
+// API Request DTOs (Client → Server)
+CreateRevenueRequest    // POST /api/revenue
+UpdateRevenueRequest    // PUT /api/revenue/{id}
+CreateExpenseRequest    // POST /api/expense  
+UpdateExpenseRequest    // PUT /api/expense/{id}
+
+// API Response DTOs (Server → Client)
+RevenueResponse        // GET operations
+ExpenseResponse        // GET operations
+
+// Import DTOs (Excel → API)
+RevenueImportDto       // Bulk import from Excel
+ExpenseImportDto       // Bulk import from Excel
+```
+
+### Benefits
+- ✅ **Security**: Request DTOs prevent ID/timestamp manipulation
+- ✅ **Validation**: Separate validation rules for create vs update
+- ✅ **Documentation**: Clear API contracts in Swagger
+- ✅ **Maintainability**: Easy to extend without breaking changes
+
 ## 📊 API Endpoints
 
 ### Authentication Endpoints
@@ -123,26 +163,51 @@ POST /api/auth/login                        # User login with JWT token
 POST /api/auth/register                     # New user registration  
 POST /api/auth/logout                       # Token revocation
 POST /api/auth/change-password              # Password updates
+GET  /api/auth/profile                      # Get user profile
 ```
 
 ### Financial Endpoints (🔒 JWT Required)
 ```
-POST /api/revenue/import                    # Bulk import with validation
-GET  /api/revenue                           # Get revenue records
-POST /api/expense/import                    # Bulk import with validation  
-GET  /api/expense                           # Get expense records
+# Revenue Management
+GET    /api/revenue                         # Get all revenue records
+GET    /api/revenue/{id}                    # Get revenue by ID
+POST   /api/revenue                         # Create new revenue
+PUT    /api/revenue/{id}                    # Update revenue
+DELETE /api/revenue/{id}                    # Delete revenue
+POST   /api/revenue/bulk-import             # Excel bulk import
+
+# Expense Management  
+GET    /api/expense                         # Get all expense records
+GET    /api/expense/{id}                    # Get expense by ID
+POST   /api/expense                         # Create new expense
+PUT    /api/expense/{id}                    # Update expense
+DELETE /api/expense/{id}                    # Delete expense
+POST   /api/expense/bulk-import             # Excel bulk import
 ```
 
 ## 🔗 Power Platform Integration
 
 ### Custom Connectors
-- **Auth Connector** - Authentication operations for Power Apps login
-- **Financial Connector** - Protected financial data operations
+- **Financial Data API Connector** - Complete CRUD operations with JWT authentication
+- **Swagger-based Definition** - Auto-generated from API documentation
+- **Request/Response DTOs** - Clean API contracts for Power Platform
 
 ### Power Apps Integration
-- **Login Flow** - JWT authentication with Custom Connector
-- **Data Management** - CRUD operations with proper authorization
-- **Excel Import** - Bulk data processing via Power Automate
+- **JWT Authentication Flow** - Secure login with token management
+- **Financial Data Management** - Full CRUD operations with proper authorization
+- **Form Validation** - Client-side + server-side validation
+- **Data Binding** - Clean Response DTOs for easy Power Apps binding
+
+### Power Automate Flows
+- **Excel Data Import** - Bulk processing with validation and error handling
+- **Automated Workflows** - Scheduled data processing and reporting
+- **Error Handling** - Comprehensive error logging and retry mechanisms
+
+### Integration Benefits
+- ✅ **Type Safety** - Strongly typed Request/Response DTOs
+- ✅ **Error Handling** - Structured error responses
+- ✅ **Security** - JWT authentication for all protected endpoints  
+- ✅ **Scalability** - Enterprise-grade API design patterns
 
 ## 📄 License
 

@@ -79,10 +79,25 @@ public class RevenueController : BaseApiController
 
     /// <summary>➕ CREATE REVENUE</summary>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] RevenueDto revenue)
+    public async Task<IActionResult> Create([FromBody] CreateRevenueRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
+
+        // Convert CreateRevenueRequest to RevenueDto for service
+        var revenue = new RevenueDto
+        {
+            ThangTaiChinh = request.ThangTaiChinh,
+            NamTaiChinh = request.NamTaiChinh,
+            IdNguon = request.IdNguon,
+            LoaiThu = request.LoaiThu,
+            SoTien = request.SoTien,
+            MoTa = request.MoTa,
+            GhiChu = request.GhiChu,
+            IDNguoiDung = request.IDNguoiDung,
+            NguoiNhap = request.NguoiNhap,
+            ThoiGianNhap = DateTime.Now // Set automatically
+        };
 
         return await ExecuteAsync(
             () => _revenueService.CreateAsync(revenue),
@@ -94,10 +109,26 @@ public class RevenueController : BaseApiController
 
     /// <summary>✏️ UPDATE REVENUE</summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] RevenueDto revenue)
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRevenueRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
+
+        // Convert UpdateRevenueRequest to RevenueDto for service
+        var revenue = new RevenueDto
+        {
+            Id = id,
+            ThangTaiChinh = request.ThangTaiChinh,
+            NamTaiChinh = request.NamTaiChinh,
+            IdNguon = request.IdNguon,
+            LoaiThu = request.LoaiThu,
+            SoTien = request.SoTien,
+            MoTa = request.MoTa,
+            GhiChu = request.GhiChu,
+            IDNguoiDung = request.IDNguoiDung,
+            NguoiNhap = request.NguoiNhap
+            // ThoiGianNhap will be preserved by service
+        };
 
         return await ExecuteAsync(
             () => _revenueService.UpdateAsync(id, revenue),

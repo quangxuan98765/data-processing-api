@@ -72,10 +72,25 @@ public class ExpenseController : BaseApiController
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] ExpenseDto expense)
+    public async Task<IActionResult> Create([FromBody] CreateExpenseRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
+
+        // Convert CreateExpenseRequest to ExpenseDto for service
+        var expense = new ExpenseDto
+        {
+            ThangTaiChinh = request.ThangTaiChinh,
+            NamTaiChinh = request.NamTaiChinh,
+            IdNguon = request.IdNguon,
+            LoaiChi = request.LoaiChi,
+            SoTien = request.SoTien,
+            MoTa = request.MoTa,
+            GhiChu = request.GhiChu,
+            IDNguoiDung = request.IDNguoiDung,
+            NguoiNhap = request.NguoiNhap,
+            ThoiGianNhap = DateTime.Now // Set automatically
+        };
 
         return await ExecuteAsync(
             () => _expenseService.CreateAsync(expense),
@@ -86,10 +101,26 @@ public class ExpenseController : BaseApiController
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] ExpenseDto expense)
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateExpenseRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
+
+        // Convert UpdateExpenseRequest to ExpenseDto for service
+        var expense = new ExpenseDto
+        {
+            Id = id,
+            ThangTaiChinh = request.ThangTaiChinh,
+            NamTaiChinh = request.NamTaiChinh,
+            IdNguon = request.IdNguon,
+            LoaiChi = request.LoaiChi,
+            SoTien = request.SoTien,
+            MoTa = request.MoTa,
+            GhiChu = request.GhiChu,
+            IDNguoiDung = request.IDNguoiDung,
+            NguoiNhap = request.NguoiNhap
+            // ThoiGianNhap will be preserved by service
+        };
 
         return await ExecuteAsync(
             () => _expenseService.UpdateAsync(id, expense),

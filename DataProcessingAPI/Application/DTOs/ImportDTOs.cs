@@ -36,18 +36,8 @@ public class ExpenseImportDto
 }
 
 /// <summary>
-/// Generic Import Request - Container cho bulk data
-/// </summary>
-public class FinancialImportRequestDto<T>
-{
-    public List<T> Data { get; set; } = new();
-    public string IdNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Revenue Entity DTO - For CRUD operations
-/// Đại diện cho 1 record trong database
+/// Revenue Entity DTO - For Service Layer (INTERNAL)
+/// Giữ để tương thích với Service layer hiện tại
 /// </summary>
 public class RevenueDto
 {
@@ -66,31 +56,32 @@ public class RevenueDto
 }
 
 /// <summary>
-/// Revenue Create Request DTO
-/// User nhập TenNguon, hệ thống convert sang IdNguon
+/// Revenue Response DTO - For API responses (GET operations)
 /// </summary>
-public class CreateRevenueDto
-{
-    public int ThangTaiChinh { get; set; }
-    public int NamTaiChinh { get; set; }
-    public string TenNguon { get; set; } = string.Empty; // User input
-    public string LoaiThu { get; set; } = string.Empty;
-    public decimal SoTien { get; set; }
-    public string MoTa { get; set; } = string.Empty;
-    public string GhiChu { get; set; } = string.Empty;
-    public string IDNguoiDung { get; set; } = string.Empty;
-    public string NguoiNhap { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Revenue Update Request DTO
-/// </summary>
-public class UpdateRevenueDto
+public class RevenueResponse
 {
     public int Id { get; set; }
     public int ThangTaiChinh { get; set; }
     public int NamTaiChinh { get; set; }
-    public string TenNguon { get; set; } = string.Empty; // User input
+    public int IdNguon { get; set; }
+    public string TenNguon { get; set; } = string.Empty; // For display
+    public string LoaiThu { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
+    public DateTime ThoiGianNhap { get; set; }
+    public string IDNguoiDung { get; set; } = string.Empty;
+    public string NguoiNhap { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Revenue Create Request DTO - For API POST requests
+/// </summary>
+public class CreateRevenueRequest
+{
+    public int ThangTaiChinh { get; set; }
+    public int NamTaiChinh { get; set; }
+    public int IdNguon { get; set; } // Direct IdNguon from client
     public string LoaiThu { get; set; } = string.Empty;
     public decimal SoTien { get; set; }
     public string MoTa { get; set; } = string.Empty;
@@ -100,24 +91,24 @@ public class UpdateRevenueDto
 }
 
 /// <summary>
-/// Operation Result DTO for single record operations
+/// Revenue Update Request DTO - For API PUT requests
 /// </summary>
-public class OperationResultDto
+public class UpdateRevenueRequest
 {
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public List<string> Errors { get; set; } = new();
-    public object? Data { get; set; }
-    
-    public void AddError(string error)
-    {
-        Success = false;
-        Errors.Add(error);
-    }
+    public int ThangTaiChinh { get; set; }
+    public int NamTaiChinh { get; set; }
+    public int IdNguon { get; set; }
+    public string LoaiThu { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
+    public string IDNguoiDung { get; set; } = string.Empty;
+    public string NguoiNhap { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Expense Entity DTO - For CRUD operations
+/// Expense Entity DTO - For Service Layer (INTERNAL)
+/// Giữ để tương thích với Service layer hiện tại
 /// </summary>
 public class ExpenseDto
 {
@@ -136,13 +127,32 @@ public class ExpenseDto
 }
 
 /// <summary>
-/// Expense Create Request DTO
+/// Expense Response DTO - For API responses (GET operations)
 /// </summary>
-public class CreateExpenseDto
+public class ExpenseResponse
+{
+    public int Id { get; set; }
+    public int ThangTaiChinh { get; set; }
+    public int NamTaiChinh { get; set; }
+    public int IdNguon { get; set; }
+    public string TenNguon { get; set; } = string.Empty;
+    public string LoaiChi { get; set; } = string.Empty;
+    public decimal SoTien { get; set; }
+    public string MoTa { get; set; } = string.Empty;
+    public string GhiChu { get; set; } = string.Empty;
+    public DateTime ThoiGianNhap { get; set; }
+    public string IDNguoiDung { get; set; } = string.Empty;
+    public string NguoiNhap { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Expense Create Request DTO - For API POST requests
+/// </summary>
+public class CreateExpenseRequest
 {
     public int ThangTaiChinh { get; set; }
     public int NamTaiChinh { get; set; }
-    public string TenNguon { get; set; } = string.Empty;
+    public int IdNguon { get; set; }
     public string LoaiChi { get; set; } = string.Empty;
     public decimal SoTien { get; set; }
     public string MoTa { get; set; } = string.Empty;
@@ -152,14 +162,13 @@ public class CreateExpenseDto
 }
 
 /// <summary>
-/// Expense Update Request DTO
+/// Expense Update Request DTO - For API PUT requests
 /// </summary>
-public class UpdateExpenseDto
+public class UpdateExpenseRequest
 {
-    public int Id { get; set; }
     public int ThangTaiChinh { get; set; }
     public int NamTaiChinh { get; set; }
-    public string TenNguon { get; set; } = string.Empty;
+    public int IdNguon { get; set; }
     public string LoaiChi { get; set; } = string.Empty;
     public decimal SoTien { get; set; }
     public string MoTa { get; set; } = string.Empty;

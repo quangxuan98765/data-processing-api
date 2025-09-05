@@ -39,7 +39,7 @@ public class ApiResponse : ApiResponse<object?>
         };
     }
 
-    public static new ApiResponse Error(string message, int status = 500)
+    public static ApiResponse Error(string message, int status = 500)
     {
         return new ApiResponse
         {
