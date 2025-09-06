@@ -1,7 +1,6 @@
 using System.Data;                                    // DataTable, DataRow
 using DataProcessingAPI.Application.DTOs;            // ExpenseDto, ExpenseImportDto, BulkOperationResultDto
 using DataProcessingAPI.Application.Interfaces.Financial;  // IExpenseService
-using DataProcessingAPI.Shared.Constants;            // DatabaseConstants, AppConstants
 using DataAccess;                                     // IDatabaseService
 
 namespace DataProcessingAPI.Application.Services.Financial;
@@ -44,7 +43,7 @@ public class ExpenseService : IExpenseService
 
         if (!data.Any())
         {
-            result.AddError(AppConstants.NO_DATA_ERROR);
+            result.AddError("Không có dữ liệu để xử lý.");
             return result;
         }
 
@@ -53,10 +52,10 @@ public class ExpenseService : IExpenseService
             var nguonMap = await GetNguonMapAsync();
             // Create DataTable và bulk insert
             var dataTable = CreateDataTable(data, nguonMap);
-            var insertedRows = await _database.BulkInsertAsync(dataTable, DatabaseConstants.EXPENSE_TABLE);
+            var insertedRows = await _database.BulkInsertAsync(dataTable, "ThuChiTaiChinh");
 
             result.Success = true;
-            result.Message = $"Expense {AppConstants.BULK_INSERT_SUCCESS}";
+            result.Message = "Thêm dữ liệu chi khối lượng lớn thành công.";
             result.ProcessedRows = data.Count;
             result.InsertedRows = insertedRows;
         }
@@ -76,7 +75,7 @@ public class ExpenseService : IExpenseService
             { "@ThangTaiChinh", 0 },
             { "@NamTaiChinh", 0 },
             { "@IdNguon", 0 },
-            { "@LoaiNguon", DatabaseConstants.LOAI_CHI }
+            { "@LoaiNguon", "CHI" }
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
@@ -106,8 +105,8 @@ public class ExpenseService : IExpenseService
             { "@NguoiNhap", expense.NguoiNhap ?? "" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_INSERT_THUCHIHOATDONG, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Insert_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     /// <summary>✏️ UPDATE EXPENSE</summary>
@@ -126,8 +125,8 @@ public class ExpenseService : IExpenseService
             { "@NguoiNhap", expense.NguoiNhap ?? "" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_UPDATE_THUCHIHOATDONG, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Update_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     /// <summary>❌ DELETE EXPENSE</summary>
@@ -136,11 +135,11 @@ public class ExpenseService : IExpenseService
         var parameters = new Dictionary<string, object>
         {
             { "@ID", id },
-            { "@LoaiHoatDong", DatabaseConstants.LOAI_CHI }
+            { "@LoaiHoatDong", "CHI" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_DELETE_THUCHIITAICHINH, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Delete_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     // Helper methods

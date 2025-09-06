@@ -1,7 +1,6 @@
 using System.Data;
 using DataProcessingAPI.Application.DTOs;
 using DataProcessingAPI.Application.Interfaces.Financial;
-using DataProcessingAPI.Shared.Constants;
 using DataAccess;            
 
 namespace DataProcessingAPI.Application.Services.Financial;
@@ -44,7 +43,7 @@ public class RevenueService : IRevenueService
 
         if (!data.Any())
         {
-            result.AddError(AppConstants.NO_DATA_ERROR);
+            result.AddError("Không có dữ liệu để xử lý.");
             return result;
         }
 
@@ -54,10 +53,10 @@ public class RevenueService : IRevenueService
             var nguonMapData = await GetNguonMapAsync();
             var dataTable = CreateDataTable(data, nguonMapData);
 
-            var insertedRows = await _database.BulkInsertAsync(dataTable, DatabaseConstants.REVENUE_TABLE);
+            var insertedRows = await _database.BulkInsertAsync(dataTable, "ThuChiTaiChinh");
 
             result.Success = true;
-            result.Message = $"Revenue {AppConstants.BULK_INSERT_SUCCESS}";
+            result.Message = "Thêm dữ liệu thu khối lượng lớn thành công.";
             result.ProcessedRows = data.Count;
             result.InsertedRows = insertedRows;
         }
@@ -77,7 +76,7 @@ public class RevenueService : IRevenueService
             { "@ThangTaiChinh", 0 },
             { "@NamTaiChinh", 0 },
             { "@IdNguon", 0 },
-            { "@LoaiNguon", DatabaseConstants.LOAI_THU }
+            { "@LoaiNguon", "THU" }
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
@@ -128,8 +127,8 @@ public class RevenueService : IRevenueService
             { "@NguoiNhap", revenue.NguoiNhap ?? "" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_UPDATE_THUCHIHOATDONG, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Update_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     /// <summary>❌ DELETE REVENUE</summary>
@@ -138,11 +137,11 @@ public class RevenueService : IRevenueService
         var parameters = new Dictionary<string, object>
         {
             { "@ID", id },
-            { "@LoaiHoatDong", DatabaseConstants.LOAI_THU }
+            { "@LoaiHoatDong", "THU" }
         };
 
-        var result = await _database.ExecuteStoredProcAsync(DatabaseConstants.SP_DELETE_THUCHIITAICHINH, parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["ReturnCode"]) : 0;
+        var result = await _database.ExecuteStoredProcAsync("sp_Delete_ThuChiTaiChinh", parameters);
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
     }
 
     // Helper methods
