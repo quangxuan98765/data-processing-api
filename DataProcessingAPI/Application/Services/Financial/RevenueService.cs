@@ -76,7 +76,7 @@ public class RevenueService : IRevenueService
             { "@ThangTaiChinh", 0 },
             { "@NamTaiChinh", 0 },
             { "@IdNguon", 0 },
-            { "@LoaiNguon", "THU" }
+            { "@LoaiNguon", 1 }  // 1=Thu
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
@@ -128,7 +128,7 @@ public class RevenueService : IRevenueService
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Update_ThuChiTaiChinh", parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["UpdatedId"]) : 0;
     }
 
     /// <summary>❌ DELETE REVENUE</summary>
@@ -137,11 +137,11 @@ public class RevenueService : IRevenueService
         var parameters = new Dictionary<string, object>
         {
             { "@ID", id },
-            { "@LoaiHoatDong", "THU" }
+            { "@LoaiHoatDong", 1 }  // 1=Thu
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Delete_ThuChiTaiChinh", parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["RowsDeleted"]) : 0;
     }
 
     // Helper methods

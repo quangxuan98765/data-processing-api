@@ -75,7 +75,7 @@ public class ExpenseService : IExpenseService
             { "@ThangTaiChinh", 0 },
             { "@NamTaiChinh", 0 },
             { "@IdNguon", 0 },
-            { "@LoaiNguon", "CHI" }
+            { "@LoaiNguon", 2 }  // 2=Chi
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Get_ThuChiTaiChinh", parameters);
@@ -126,7 +126,7 @@ public class ExpenseService : IExpenseService
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Update_ThuChiTaiChinh", parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["UpdatedId"]) : 0;
     }
 
     /// <summary>❌ DELETE EXPENSE</summary>
@@ -135,11 +135,11 @@ public class ExpenseService : IExpenseService
         var parameters = new Dictionary<string, object>
         {
             { "@ID", id },
-            { "@LoaiHoatDong", "CHI" }
+            { "@LoaiHoatDong", 2 }  // 2=Chi
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Delete_ThuChiTaiChinh", parameters);
-        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["NewId"]) : 0;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["RowsDeleted"]) : 0;
     }
 
     // Helper methods
