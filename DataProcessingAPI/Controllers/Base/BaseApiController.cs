@@ -73,7 +73,7 @@ public abstract class BaseApiController : ControllerBase
             if (result > 0)
             {
                 _logger.LogInformation("Completed {OperationName} successfully", operationName);
-                return HandleSuccess(new { Id = result }, successMessage, successStatus);
+                return HandleSuccess(new { id = result }, successMessage, successStatus);
             }
 
             _logger.LogWarning("{OperationName} failed - no rows affected", operationName);
