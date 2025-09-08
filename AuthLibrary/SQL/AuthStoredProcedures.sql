@@ -49,7 +49,7 @@ GO
 IF OBJECT_ID(N'dbo.sp_CreateAuthToken','P') IS NOT NULL DROP PROCEDURE dbo.sp_CreateAuthToken;
 GO
 CREATE PROCEDURE dbo.sp_CreateAuthToken
-    @TokenKey NVARCHAR(40),
+    @TokenKey NVARCHAR(1000),
     @IdUser INT,
     @ExpireDate DATETIMEOFFSET,
     @SingleSession BIT = 0
