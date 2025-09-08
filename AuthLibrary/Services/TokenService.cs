@@ -49,7 +49,7 @@ public class TokenService : ITokenService
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_expiryMinutes).AddHours(7), // +7 VN timezone
+            expires: DateTime.UtcNow.AddMinutes(_expiryMinutes), // ✅ JWT phải dùng UTC
             signingCredentials: credentials
         );
 
