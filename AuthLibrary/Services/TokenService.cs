@@ -49,7 +49,7 @@ public class TokenService : ITokenService
             issuer: _issuer,
             audience: _audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_expiryMinutes),
+            expires: DateTime.UtcNow.AddMinutes(_expiryMinutes).AddHours(7), // +7 VN timezone
             signingCredentials: credentials
         );
 
@@ -97,10 +97,10 @@ public class TokenService : ITokenService
     }
 
     /// <summary>
-    /// Get token expiry date
+    /// Get token expiry date (Vietnam timezone +7)
     /// </summary>
     public DateTime GetTokenExpiry()
     {
-        return DateTime.UtcNow.AddMinutes(_expiryMinutes);
+        return DateTime.UtcNow.AddMinutes(_expiryMinutes).AddHours(7); // +7 VN timezone
     }
 }
