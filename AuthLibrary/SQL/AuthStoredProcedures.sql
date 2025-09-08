@@ -51,7 +51,7 @@ GO
 CREATE PROCEDURE dbo.sp_CreateAuthToken
     @TokenKey NVARCHAR(40),
     @IdUser INT,
-    @ExpireDate DATETIME,
+    @ExpireDate DATETIMEOFFSET,
     @SingleSession BIT = 0
 AS
 BEGIN
@@ -144,7 +144,7 @@ CREATE PROCEDURE dbo.sp_CleanExpiredTokens
 AS
 BEGIN
     SET NOCOUNT ON;
-    DELETE FROM dbo.auth_token WHERE expire_date < GETDATE();
+    DELETE FROM dbo.auth_token WHERE expire_date < SWITCHOFFSET(SYSDATETIMEOFFSET(), '+07:00');
     SELECT @@ROWCOUNT AS DeletedTokens;
 END
 GO
