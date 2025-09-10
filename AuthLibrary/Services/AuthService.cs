@@ -41,14 +41,15 @@ namespace AuthLibrary.Services
 
                 // Generate token & expiry in app
                 var token = _tokenService.GenerateToken(user); // raw token string
-                var expiry = _tokenService.GetTokenExpiry(); // DateTime (UTC)
+                var expiryUtc = _tokenService.GetTokenExpiry(); // DateTime (UTC)
+                var expiryVn = expiryUtc.AddHours(7); // VN time for database storage
 
-                // Store token in DB via SP (SingleSession optional: 0 = allow many)
+                // Store token in DB with VN timezone for admin readability
                 await _databaseService.ExecuteStoredProcAsync("sp_CreateAuthToken", new
                 {
                     TokenKey = token,
                     IdUser = user.Id,
-                    ExpireDate = expiry,
+                    ExpireDate = expiryVn, // VN time for DB
                     SingleSession = 0
                 });
 
@@ -59,7 +60,7 @@ namespace AuthLibrary.Services
                 {
                     Success = true,
                     Token = token,
-                    ExpiresAt = expiry,
+                    ExpiresAt = expiryUtc, // UTC for API response
                     User = new UserInfo
                     {
                         Id = user.Id,

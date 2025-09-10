@@ -97,10 +97,10 @@ public class TokenService : ITokenService
     }
 
     /// <summary>
-    /// Get token expiry date (Vietnam timezone +7)
+    /// Get token expiry date (UTC for consistent system-wide usage)
     /// </summary>
     public DateTime GetTokenExpiry()
     {
-        return DateTime.UtcNow.AddMinutes(_expiryMinutes).AddHours(7); // +7 VN timezone
+        return DateTime.UtcNow.AddMinutes(_expiryMinutes); // UTC only
     }
 }
