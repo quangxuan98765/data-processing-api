@@ -29,6 +29,12 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "APIs for user authentication and authorization"
     });
+    c.SwaggerDoc("speedtest", new OpenApiInfo 
+    { 
+        Title = "Speed Test API", 
+        Version = "v1",
+        Description = "APIs for managing ICT speed test results"
+    });
 });
 
 // 🔧 DATABASE SERVICE
@@ -101,6 +107,7 @@ if (app.Environment.IsDevelopment())
     {
         options.SwaggerEndpoint("/swagger/financial/swagger.json", "Financial API v1");
         options.SwaggerEndpoint("/swagger/auth/swagger.json", "Auth API v1");
+        options.SwaggerEndpoint("/swagger/speedtest/swagger.json", "Speed Test API v1");
     });
 }
 

@@ -12,6 +12,7 @@ namespace DataProcessingAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[ApiExplorerSettings(GroupName = "speedtest")]
 public class SpeedTestController : BaseApiController
 {
     private readonly ISpeedTestService _speedTestService;
@@ -19,7 +20,7 @@ public class SpeedTestController : BaseApiController
     public SpeedTestController(ISpeedTestService speedTestService, ILogger<SpeedTestController> logger)
         : base(logger)
     {
-        _speedTestService = speedTestService;
+        _speedTestService = speedTestService ?? throw new ArgumentNullException(nameof(speedTestService));
     }
 
     /// <summary>
@@ -29,11 +30,11 @@ public class SpeedTestController : BaseApiController
     /// <param name="endDate">End date (optional)</param>
     /// <returns>List of speed test results</returns>
     [HttpGet]
-    public async Task<IActionResult> GetSpeedTestResults(
+    public async Task<IActionResult> GetAll(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        try
+        return await ExecuteAsync(async () =>
         {
             var speedTests = await _speedTestService.GetSpeedTestResultsAsync(startDate, endDate);
             
@@ -50,12 +51,8 @@ public class SpeedTestController : BaseApiController
                 IDNguoiDung = st.IDNguoiDung
             }).ToList();
 
-            return HandleSuccess(response);
-        }
-        catch (Exception)
-        {
-            return HandleError("Error retrieving speed test results");
-        }
+            return response;
+        }, "get all speed test results", "Speed test results retrieved successfully");
     }
 
     /// <summary>
@@ -64,15 +61,15 @@ public class SpeedTestController : BaseApiController
     /// <param name="id">Speed test ID</param>
     /// <returns>Speed test result</returns>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetSpeedTestById(long id)
+    public async Task<IActionResult> GetById(long id)
     {
-        try
+        return await ExecuteAsync(async () =>
         {
             var speedTest = await _speedTestService.GetSpeedTestByIdAsync(id);
-            
             if (speedTest == null)
             {
-                return HandleError($"Speed test with ID {id} not found", 404);
+                _logger.LogWarning("Speed test with ID {Id} not found", id);
+                throw new KeyNotFoundException($"Speed test with ID {id} not found");
             }
 
             var response = new SpeedTestResponse
@@ -88,12 +85,8 @@ public class SpeedTestController : BaseApiController
                 IDNguoiDung = speedTest.IDNguoiDung
             };
 
-            return HandleSuccess(response);
-        }
-        catch (Exception)
-        {
-            return HandleError($"Error retrieving speed test with ID {id}");
-        }
+            return response;
+        }, $"get speed test {id}", "Speed test retrieved successfully");
     }
 
     /// <summary>
@@ -102,9 +95,12 @@ public class SpeedTestController : BaseApiController
     /// <param name="request">Speed test data</param>
     /// <returns>Created speed test result with ID</returns>
     [HttpPost]
-    public async Task<IActionResult> CreateSpeedTest([FromBody] SpeedTestRequest request)
+    public async Task<IActionResult> Create([FromBody] SpeedTestRequest request)
     {
-        try
+        var validation = ValidateModel();
+        if (validation != null) return validation;
+
+        return await ExecuteAsync(async () =>
         {
             var speedTestDto = new SpeedTestDto
             {
@@ -118,18 +114,14 @@ public class SpeedTestController : BaseApiController
             };
 
             var newId = await _speedTestService.CreateSpeedTestAsync(speedTestDto);
-            
             if (newId <= 0)
             {
-                return HandleError("Failed to create speed test result", 400);
+                throw new InvalidOperationException("Failed to create speed test result");
             }
 
-            return HandleSuccess(new { id = newId }, "Speed test result created successfully");
-        }
-        catch (Exception)
-        {
-            return HandleError("Error creating speed test result");
-        }
+            _logger.LogInformation("Speed test created with ID {Id}", newId);
+            return new { id = newId };
+        }, "create speed test", "Speed test created successfully", 201);
     }
 
     /// <summary>
@@ -139,9 +131,12 @@ public class SpeedTestController : BaseApiController
     /// <param name="request">Updated speed test data</param>
     /// <returns>Success or error message</returns>
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateSpeedTest(long id, [FromBody] SpeedTestRequest request)
+    public async Task<IActionResult> Update(long id, [FromBody] SpeedTestRequest request)
     {
-        try
+        var validation = ValidateModel();
+        if (validation != null) return validation;
+
+        return await ExecuteAsync(async () =>
         {
             var speedTestDto = new SpeedTestDto
             {
@@ -156,48 +151,42 @@ public class SpeedTestController : BaseApiController
             };
 
             var success = await _speedTestService.UpdateSpeedTestAsync(id, speedTestDto);
-            
             if (!success)
             {
-                return HandleError("Failed to update speed test result or insufficient permissions", 400);
+                throw new InvalidOperationException("Failed to update speed test result or insufficient permissions");
             }
 
-            return HandleSuccess(new { id = id }, "Speed test result updated successfully");
-        }
-        catch (Exception)
-        {
-            return HandleError($"Error updating speed test with ID {id}");
-        }
+            _logger.LogInformation("Speed test {Id} updated successfully", id);
+            return new { id = id };
+        }, $"update speed test {id}", "Speed test updated successfully");
     }
 
     /// <summary>
     /// Delete speed test result
     /// </summary>
     /// <param name="id">Speed test ID</param>
-    /// <param name="userId">User ID for permission check</param>
     /// <returns>Success or error message</returns>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteSpeedTest(long id, [FromQuery] string userId)
+    public async Task<IActionResult> Delete(long id)
     {
-        try
+        return await ExecuteAsync(async () =>
         {
-            if (string.IsNullOrEmpty(userId))
+            // Lấy userId từ JWT token thay vì query parameter
+            var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("nameid");
+            if (userIdClaim == null)
             {
-                return HandleError("User ID is required", 400);
+                throw new UnauthorizedAccessException("Invalid user token");
             }
 
+            var userId = userIdClaim.Value;
             var success = await _speedTestService.DeleteSpeedTestAsync(id, userId);
-            
             if (!success)
             {
-                return HandleError("Failed to delete speed test result or insufficient permissions", 400);
+                throw new InvalidOperationException("Failed to delete speed test result or insufficient permissions");
             }
 
-            return HandleSuccess(new { id = id }, "Speed test result deleted successfully");
-        }
-        catch (Exception)
-        {
-            return HandleError($"Error deleting speed test with ID {id}");
-        }
+            _logger.LogInformation("Speed test {Id} deleted successfully", id);
+            return new { id = id };
+        }, $"delete speed test {id}", "Speed test deleted successfully");
     }
 }
