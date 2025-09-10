@@ -1,5 +1,7 @@
 using DataProcessingAPI.Application.Interfaces.Financial;
 using DataProcessingAPI.Application.Services.Financial;
+using DataProcessingAPI.Application.Interfaces;
+using DataProcessingAPI.Application.Services;
 using DataAccess;
 using AuthLibrary.Interfaces;
 using AuthLibrary.Services;
@@ -39,6 +41,9 @@ builder.Services.AddScoped<IDatabaseService>(provider =>
 // 🏢 BUSINESS SERVICES - CẢ THU VÀ CHI
 builder.Services.AddScoped<IRevenueService, RevenueService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+
+// 🚀 SPEED TEST SERVICE
+builder.Services.AddScoped<ISpeedTestService, SpeedTestService>();
 
 // 🔐 AUTHENTICATION SERVICES
 var jwtSettings = builder.Configuration.GetSection("JWT");
