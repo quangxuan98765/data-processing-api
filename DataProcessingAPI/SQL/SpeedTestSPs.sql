@@ -159,8 +159,7 @@ IF OBJECT_ID(N'dbo.sp_Delete_ICT_SpeedTestResults','P') IS NOT NULL
     DROP PROCEDURE dbo.sp_Delete_ICT_SpeedTestResults;
 GO
 CREATE PROCEDURE [dbo].[sp_Delete_ICT_SpeedTestResults]
-    @ID BIGINT,
-    @IDNguoiDung NVARCHAR(100)    -- thêm tham số user gọi SP
+    @ID BIGINT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -168,25 +167,7 @@ BEGIN
     
     BEGIN TRAN
     BEGIN TRY
-        -- 1. Lấy owner của bản ghi
-        DECLARE @OwnerID NVARCHAR(100);
-        SELECT @OwnerID = IDNguoiDung
-        FROM dbo.ICT_SpeedTestResults
-        WHERE ID = @ID;
-
-        -- 2. Nếu không tồn tại record hoặc không phải owner thì trả về -2
-        IF @OwnerID IS NULL OR @OwnerID <> @IDNguoiDung
-        BEGIN
-            SET @result = -2;       -- -2 = không có quyền xóa
-            ROLLBACK TRAN;
-            SELECT @result AS ReturnCode;
-            RETURN @result;
-        END
-
-        -- 3. Xóa bình thường
-        DELETE FROM dbo.ICT_SpeedTestResults
-        WHERE ID = @ID;
-
+        DELETE FROM dbo.ICT_SpeedTestResults WHERE ID = @ID;
         SET @result = 1;            -- 1 = xóa thành công
         COMMIT TRAN;
     END TRY

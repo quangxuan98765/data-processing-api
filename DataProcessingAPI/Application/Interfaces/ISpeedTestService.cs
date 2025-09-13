@@ -8,5 +8,5 @@ public interface ISpeedTestService
     Task<SpeedTestDto?> GetSpeedTestByIdAsync(long id);
     Task<long> CreateSpeedTestAsync(SpeedTestDto speedTest);
     Task<bool> UpdateSpeedTestAsync(long id, SpeedTestDto speedTest);
-    Task<bool> DeleteSpeedTestAsync(long id, string userId);
+    Task<bool> DeleteSpeedTestAsync(long id);
 }

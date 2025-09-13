@@ -14,6 +14,6 @@ public interface IRevenueService
     Task<RevenueDto?> GetByIdAsync(int id);
     Task<List<RevenueDto>> GetAllAsync();
     Task<int> CreateAsync(RevenueDto revenue);
-    Task<int> UpdateAsync(int id, RevenueDto revenue, string userId); // 🔒 Add userId
-    Task<int> DeleteAsync(int id, string userId); // 🔒 Add userId
+    Task<int> UpdateAsync(int id, RevenueDto revenue);
+    Task<int> DeleteAsync(int id);
 }

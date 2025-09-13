@@ -112,7 +112,7 @@ public class RevenueService : IRevenueService
     }
 
     /// <summary>✏️ UPDATE REVENUE</summary>
-    public async Task<int> UpdateAsync(int id, RevenueDto revenue, string userId)
+    public async Task<int> UpdateAsync(int id, RevenueDto revenue)
     {
         var parameters = new Dictionary<string, object>
         {
@@ -123,42 +123,25 @@ public class RevenueService : IRevenueService
             { "@SoTien", revenue.SoTien },
             { "@MoTa", revenue.MoTa ?? "" },
             { "@GhiChu", revenue.GhiChu ?? "" },
-            { "@IDNguoiDung", userId }, // 🔒 Use provided userId for ownership check
+            { "@IDNguoiDung", revenue.IDNguoiDung ?? "" },
             { "@NguoiNhap", revenue.NguoiNhap ?? "" }
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Update_ThuChiTaiChinh", parameters);
-        var updateResult = result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["UpdatedId"]) : 0;
-        
-        // 🔒 Check for permission denied
-        if (updateResult == -2)
-        {
-            throw new UnauthorizedAccessException("Insufficient permissions to update this record");
-        }
-        
-        return updateResult;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["UpdatedId"]) : 0;
     }
 
     /// <summary>❌ DELETE REVENUE</summary>
-    public async Task<int> DeleteAsync(int id, string userId)
+    public async Task<int> DeleteAsync(int id)
     {
         var parameters = new Dictionary<string, object>
         {
             { "@ID", id },
-            { "@LoaiHoatDong", 1 },  // 1=Thu
-            { "@IDNguoiDung", userId } // 🔒 Add userId for ownership check
+            { "@LoaiHoatDong", 1 }  // 1=Thu
         };
 
         var result = await _database.ExecuteStoredProcAsync("sp_Delete_ThuChiTaiChinh", parameters);
-        var deleteResult = result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["RowsDeleted"]) : 0;
-        
-        // 🔒 Check for permission denied
-        if (deleteResult == -2)
-        {
-            throw new UnauthorizedAccessException("Insufficient permissions to delete this record");
-        }
-        
-        return deleteResult;
+        return result.Rows.Count > 0 ? Convert.ToInt32(result.Rows[0]["RowsDeleted"]) : 0;
     }
 
     // Helper methods

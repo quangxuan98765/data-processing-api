@@ -108,18 +108,10 @@ public class SpeedTestController : BaseApiController
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {
-        return await ExecuteAsync(async () =>
-        {
-            // 🔒 SpeedTest cần GUID userId để check ownership (khác với Revenue/Expense)
-            // Stored procedure sp_Delete_ICT_SpeedTestResults kiểm tra @OwnerID = @IDNguoiDung
-            // IDNguoiDung trong DB là GUID string (ví dụ: 107067c9-435c-428e-830c-8c5518cab3f6)
-            var userId = GetCurrentUserGuid(); // Lấy GUID thay vì int
-            var success = await _speedTestService.DeleteSpeedTestAsync(id, userId);
-            if (!success)
-            {
-                throw new InvalidOperationException("Failed to delete speed test result or insufficient permissions");
-            }
-            return new { id = id };
-        }, $"delete speed test {id}", "Speed test deleted successfully");
+        return await ExecuteAsync(
+            () => _speedTestService.DeleteSpeedTestAsync(id),
+            $"delete speed test {id}",
+            "Speed test deleted successfully"
+        );
     }
 }

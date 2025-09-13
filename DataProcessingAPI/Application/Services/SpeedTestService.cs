@@ -85,12 +85,11 @@ public class SpeedTestService : ISpeedTestService
         return false;
     }
 
-    public async Task<bool> DeleteSpeedTestAsync(long id, string userId)
+    public async Task<bool> DeleteSpeedTestAsync(long id)
     {
         var parameters = new 
         {
-            ID = id,
-            IDNguoiDung = userId
+            ID = id
         };
 
         var dataTable = await _databaseService.ExecuteStoredProcAsync("sp_Delete_ICT_SpeedTestResults", parameters);

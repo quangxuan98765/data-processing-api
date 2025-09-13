@@ -122,23 +122,21 @@ public class ExpenseController : BaseApiController
             // ThoiGianNhap will be preserved by service
         };
 
-        return await ExecuteAsync(async () =>
-        {
-            // 🔒 Get current user GUID for ownership check
-            var currentUserId = GetCurrentUserGuid();
-            return await _expenseService.UpdateAsync(id, expense, currentUserId);
-        }, $"update expense {id}", "Expense updated successfully");
+        return await ExecuteAsync(
+            () => _expenseService.UpdateAsync(id, expense),
+            $"update expense {id}",
+            "Expense updated successfully"
+        );
     }
 
     /// <summary>❌ DELETE EXPENSE</summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        return await ExecuteAsync(async () =>
-        {
-            // 🔒 Get current user GUID for ownership check
-            var currentUserId = GetCurrentUserGuid();
-            return await _expenseService.DeleteAsync(id, currentUserId);
-        }, $"delete expense {id}", "Expense deleted successfully");
+        return await ExecuteAsync(
+            () => _expenseService.DeleteAsync(id),
+            $"delete expense {id}",
+            "Expense deleted successfully"
+        );
     }
 }
