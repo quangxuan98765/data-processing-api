@@ -130,21 +130,23 @@ public class RevenueController : BaseApiController
             // ThoiGianNhap will be preserved by service
         };
 
-        return await ExecuteAsync(
-            () => _revenueService.UpdateAsync(id, revenue),
-            $"update revenue {id}",
-            "Revenue updated successfully"
-        );
+        return await ExecuteAsync(async () =>
+        {
+            // 🔒 Get current user GUID for ownership check
+            var currentUserId = GetCurrentUserGuid();
+            return await _revenueService.UpdateAsync(id, revenue, currentUserId);
+        }, $"update revenue {id}", "Revenue updated successfully");
     }
 
     /// <summary>❌ DELETE REVENUE</summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        return await ExecuteAsync(
-            () => _revenueService.DeleteAsync(id),
-            $"delete revenue {id}",
-            "Revenue deleted successfully"
-        );
+        return await ExecuteAsync(async () =>
+        {
+            // 🔒 Get current user GUID for ownership check  
+            var currentUserId = GetCurrentUserGuid();
+            return await _revenueService.DeleteAsync(id, currentUserId);
+        }, $"delete revenue {id}", "Revenue deleted successfully");
     }
 }

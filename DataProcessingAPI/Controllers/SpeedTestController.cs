@@ -110,10 +110,10 @@ public class SpeedTestController : BaseApiController
     {
         return await ExecuteAsync(async () =>
         {
-            // 🔒 SpeedTest cần userId để check ownership (khác với Revenue/Expense)
+            // 🔒 SpeedTest cần GUID userId để check ownership (khác với Revenue/Expense)
             // Stored procedure sp_Delete_ICT_SpeedTestResults kiểm tra @OwnerID = @IDNguoiDung
-            // Chỉ owner mới được xóa record của mình (security requirement)
-            var userId = GetCurrentUserId().ToString();
+            // IDNguoiDung trong DB là GUID string (ví dụ: 107067c9-435c-428e-830c-8c5518cab3f6)
+            var userId = GetCurrentUserGuid(); // Lấy GUID thay vì int
             var success = await _speedTestService.DeleteSpeedTestAsync(id, userId);
             if (!success)
             {

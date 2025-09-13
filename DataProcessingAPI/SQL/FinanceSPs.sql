@@ -44,7 +44,7 @@ END
 GO
 
 -- 2) Insert Thu/Chi
-IF OBJECT_ID(N'dbo.sp_Insert_ThuChiTaiChinh','P') IS NOT NULL DROP PROCEDURE dbo.sp_Insert_ThuChiHoatDong;
+IF OBJECT_ID(N'dbo.sp_Insert_ThuChiTaiChinh','P') IS NOT NULL DROP PROCEDURE dbo.sp_Insert_ThuChiTaiChinh;
 GO
 CREATE PROCEDURE dbo.sp_Insert_ThuChiTaiChinh
     @ThangTaiChinh INT,
@@ -93,7 +93,7 @@ END
 GO
 
 -- 3) Update Thu/Chi
-IF OBJECT_ID(N'dbo.sp_Update_ThuChiTaiChinh','P') IS NOT NULL DROP PROCEDURE dbo.sp_Update_ThuChiHoatDong;
+IF OBJECT_ID(N'dbo.sp_Update_ThuChiTaiChinh','P') IS NOT NULL DROP PROCEDURE dbo.sp_Update_ThuChiTaiChinh;
 GO
 CREATE PROCEDURE dbo.sp_Update_ThuChiTaiChinh
     @Id INT,
@@ -110,6 +110,7 @@ BEGIN
     SET NOCOUNT ON;
     
     DECLARE @LoaiNguon INT, @OldLoaiNguon INT;
+    DECLARE @OwnerID NVARCHAR(100); -- 🔒 Thêm owner check
     
     -- Validate new source
     SELECT @LoaiNguon = Loai FROM TaiChinh_Nguon WHERE Id = @IdNguon;
@@ -120,21 +121,28 @@ BEGIN
     IF @ThangTaiChinh NOT BETWEEN 1 AND 12 OR @NamTaiChinh < 1900 OR @SoTien <= 0
         RAISERROR('Dữ liệu không hợp lệ', 16, 1);
     
-    -- Find old record type
-    SELECT @OldLoaiNguon = n.Loai 
+    -- 🔒 Find old record type AND check ownership
+    SELECT @OldLoaiNguon = n.Loai, @OwnerID = t.IDNguoiDung
     FROM TaiChinh_ThuHoatDong t 
     INNER JOIN TaiChinh_Nguon n ON t.IdNguon = n.Id 
     WHERE t.Id = @Id;
     
     IF @OldLoaiNguon IS NULL
     BEGIN
-        SELECT @OldLoaiNguon = n.Loai 
+        SELECT @OldLoaiNguon = n.Loai, @OwnerID = c.IDNguoiDung
         FROM TaiChinh_ChiHoatDong c 
         INNER JOIN TaiChinh_Nguon n ON c.IdNguon = n.Id 
         WHERE c.Id = @Id;
         
         IF @OldLoaiNguon IS NULL
             RAISERROR('Không tìm thấy bản ghi', 16, 1);
+    END
+    
+    -- 🔒 Check ownership
+    IF @OwnerID IS NULL OR @OwnerID <> @IDNguoiDung
+    BEGIN
+        SELECT -2 AS UpdatedId; -- -2 = không có quyền sửa
+        RETURN;
     END
     
     -- Handle type change
@@ -198,20 +206,35 @@ IF OBJECT_ID(N'dbo.sp_Delete_ThuChiTaiChinh','P') IS NOT NULL DROP PROCEDURE dbo
 GO
 CREATE PROCEDURE dbo.sp_Delete_ThuChiTaiChinh
     @ID INT,
-    @LoaiHoatDong INT -- 1=Thu, 2=Chi
+    @LoaiHoatDong INT, -- 1=Thu, 2=Chi
+    @IDNguoiDung NVARCHAR(100) -- 🔒 Thêm ownership check
 AS
 BEGIN
     SET NOCOUNT ON;
     
     DECLARE @RowsDeleted INT = 0;
+    DECLARE @OwnerID NVARCHAR(100);
     
+    -- 🔒 Check ownership trước khi delete
     IF @LoaiHoatDong = 1
     BEGIN
+        SELECT @OwnerID = IDNguoiDung FROM TaiChinh_ThuHoatDong WHERE ID = @ID;
+        IF @OwnerID IS NULL OR @OwnerID <> @IDNguoiDung
+        BEGIN
+            SELECT -2 AS RowsDeleted; -- -2 = không có quyền xóa
+            RETURN;
+        END
         DELETE FROM TaiChinh_ThuHoatDong WHERE ID = @ID;
         SET @RowsDeleted = @@ROWCOUNT;
     END
     ELSE IF @LoaiHoatDong = 2
     BEGIN
+        SELECT @OwnerID = IDNguoiDung FROM TaiChinh_ChiHoatDong WHERE ID = @ID;
+        IF @OwnerID IS NULL OR @OwnerID <> @IDNguoiDung
+        BEGIN
+            SELECT -2 AS RowsDeleted; -- -2 = không có quyền xóa
+            RETURN;
+        END
         DELETE FROM TaiChinh_ChiHoatDong WHERE ID = @ID;
         SET @RowsDeleted = @@ROWCOUNT;
     END

@@ -111,6 +111,17 @@ public abstract class BaseApiController : ControllerBase
         return userId;
     }
 
+    protected string GetCurrentUserGuid()
+    {
+        // Lấy GUID từ JWT token (Azure AD Object ID hoặc similar)
+        var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("nameid") ?? User.FindFirst("oid");
+        if (userIdClaim == null || string.IsNullOrEmpty(userIdClaim.Value))
+        {
+            throw new UnauthorizedAccessException("Invalid user token - missing user identifier");
+        }
+        return userIdClaim.Value;
+    }
+
     protected string GetAuthToken()
     {
         var authHeader = Request.Headers["Authorization"].FirstOrDefault();

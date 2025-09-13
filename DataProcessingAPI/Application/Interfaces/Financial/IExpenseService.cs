@@ -14,6 +14,6 @@ public interface IExpenseService
     Task<ExpenseDto?> GetByIdAsync(int id);
     Task<List<ExpenseDto>> GetAllAsync();
     Task<int> CreateAsync(ExpenseDto expense);
-    Task<int> UpdateAsync(int id, ExpenseDto expense);
-    Task<int> DeleteAsync(int id);
+    Task<int> UpdateAsync(int id, ExpenseDto expense, string userId); // 🔒 Add userId
+    Task<int> DeleteAsync(int id, string userId); // 🔒 Add userId
 }
