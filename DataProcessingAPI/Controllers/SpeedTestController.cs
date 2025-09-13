@@ -23,43 +23,16 @@ public class SpeedTestController : BaseApiController
         _speedTestService = speedTestService ?? throw new ArgumentNullException(nameof(speedTestService));
     }
 
-    /// <summary>
-    /// Get all speed test results with optional date filtering
-    /// </summary>
-    /// <param name="startDate">Start date (optional)</param>
-    /// <param name="endDate">End date (optional)</param>
-    /// <returns>List of speed test results</returns>
+    /// <summary>📋 GET ALL SPEED TESTS</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        return await ExecuteAsync(async () =>
-        {
-            var speedTests = await _speedTestService.GetSpeedTestResultsAsync(startDate, endDate);
-            
-            var response = speedTests.Select(st => new SpeedTestResponse
-            {
-                Id = st.Id,
-                ThoiGianDo = st.ThoiGianDo,
-                DiaDiem = st.DiaDiem,
-                TocDoTaiXuong_Mbps = st.TocDoTaiXuong_Mbps,
-                TocDoTaiLen_Mbps = st.TocDoTaiLen_Mbps,
-                Ping_ms = st.Ping_ms,
-                NguoiNhap = st.NguoiNhap,
-                ThoiGianNhap = st.ThoiGianNhap,
-                IDNguoiDung = st.IDNguoiDung
-            }).ToList();
-
-            return response;
-        }, "get all speed test results", "Speed test results retrieved successfully");
+        return await ExecuteAsync(() => _speedTestService.GetSpeedTestResultsAsync(startDate, endDate), "get all speed tests", "Data retrieved successfully");
     }
 
-    /// <summary>
-    /// Get speed test result by ID
-    /// </summary>
-    /// <param name="id">Speed test ID</param>
-    /// <returns>Speed test result</returns>
+    /// <summary>🔍 GET SPEED TEST BY ID</summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(long id)
     {
@@ -71,121 +44,81 @@ public class SpeedTestController : BaseApiController
                 _logger.LogWarning("Speed test with ID {Id} not found", id);
                 throw new KeyNotFoundException($"Speed test with ID {id} not found");
             }
-
-            var response = new SpeedTestResponse
-            {
-                Id = speedTest.Id,
-                ThoiGianDo = speedTest.ThoiGianDo,
-                DiaDiem = speedTest.DiaDiem,
-                TocDoTaiXuong_Mbps = speedTest.TocDoTaiXuong_Mbps,
-                TocDoTaiLen_Mbps = speedTest.TocDoTaiLen_Mbps,
-                Ping_ms = speedTest.Ping_ms,
-                NguoiNhap = speedTest.NguoiNhap,
-                ThoiGianNhap = speedTest.ThoiGianNhap,
-                IDNguoiDung = speedTest.IDNguoiDung
-            };
-
-            return response;
-        }, $"get speed test {id}", "Speed test retrieved successfully");
+            return speedTest;
+        }, $"get speed test {id}", "Data retrieved successfully");
     }
 
-    /// <summary>
-    /// Create new speed test result
-    /// </summary>
-    /// <param name="request">Speed test data</param>
-    /// <returns>Created speed test result with ID</returns>
+    /// <summary>➕ CREATE SPEED TEST</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SpeedTestRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        return await ExecuteAsync(async () =>
+        // Convert SpeedTestRequest to SpeedTestDto for service
+        var speedTest = new SpeedTestDto
         {
-            var speedTestDto = new SpeedTestDto
-            {
-                ThoiGianDo = request.ThoiGianDo,
-                DiaDiem = request.DiaDiem,
-                TocDoTaiXuong_Mbps = request.TocDoTaiXuong_Mbps,
-                TocDoTaiLen_Mbps = request.TocDoTaiLen_Mbps,
-                Ping_ms = request.Ping_ms,
-                NguoiNhap = request.NguoiNhap,
-                IDNguoiDung = request.IDNguoiDung
-            };
+            ThoiGianDo = request.ThoiGianDo,
+            DiaDiem = request.DiaDiem,
+            TocDoTaiXuong_Mbps = request.TocDoTaiXuong_Mbps,
+            TocDoTaiLen_Mbps = request.TocDoTaiLen_Mbps,
+            Ping_ms = request.Ping_ms,
+            NguoiNhap = request.NguoiNhap,
+            IDNguoiDung = request.IDNguoiDung,
+            ThoiGianNhap = DateTime.Now // Set automatically
+        };
 
-            var newId = await _speedTestService.CreateSpeedTestAsync(speedTestDto);
-            if (newId <= 0)
-            {
-                throw new InvalidOperationException("Failed to create speed test result");
-            }
-
-            _logger.LogInformation("Speed test created with ID {Id}", newId);
-            return new { id = newId };
-        }, "create speed test", "Speed test created successfully", 201);
+        return await ExecuteAsync(
+            () => _speedTestService.CreateSpeedTestAsync(speedTest),
+            "create speed test",
+            "Speed test created successfully",
+            201
+        );
     }
 
-    /// <summary>
-    /// Update existing speed test result
-    /// </summary>
-    /// <param name="id">Speed test ID</param>
-    /// <param name="request">Updated speed test data</param>
-    /// <returns>Success or error message</returns>
+    /// <summary>✏️ UPDATE SPEED TEST</summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] SpeedTestRequest request)
     {
         var validation = ValidateModel();
         if (validation != null) return validation;
 
-        return await ExecuteAsync(async () =>
+        // Convert SpeedTestRequest to SpeedTestDto for service
+        var speedTest = new SpeedTestDto
         {
-            var speedTestDto = new SpeedTestDto
-            {
-                Id = id,
-                ThoiGianDo = request.ThoiGianDo,
-                DiaDiem = request.DiaDiem,
-                TocDoTaiXuong_Mbps = request.TocDoTaiXuong_Mbps,
-                TocDoTaiLen_Mbps = request.TocDoTaiLen_Mbps,
-                Ping_ms = request.Ping_ms,
-                NguoiNhap = request.NguoiNhap,
-                IDNguoiDung = request.IDNguoiDung
-            };
+            Id = id,
+            ThoiGianDo = request.ThoiGianDo,
+            DiaDiem = request.DiaDiem,
+            TocDoTaiXuong_Mbps = request.TocDoTaiXuong_Mbps,
+            TocDoTaiLen_Mbps = request.TocDoTaiLen_Mbps,
+            Ping_ms = request.Ping_ms,
+            NguoiNhap = request.NguoiNhap,
+            IDNguoiDung = request.IDNguoiDung
+            // ThoiGianNhap will be preserved by service
+        };
 
-            var success = await _speedTestService.UpdateSpeedTestAsync(id, speedTestDto);
-            if (!success)
-            {
-                throw new InvalidOperationException("Failed to update speed test result or insufficient permissions");
-            }
-
-            _logger.LogInformation("Speed test {Id} updated successfully", id);
-            return new { id = id };
-        }, $"update speed test {id}", "Speed test updated successfully");
+        return await ExecuteAsync(
+            () => _speedTestService.UpdateSpeedTestAsync(id, speedTest),
+            $"update speed test {id}",
+            "Speed test updated successfully"
+        );
     }
 
-    /// <summary>
-    /// Delete speed test result
-    /// </summary>
-    /// <param name="id">Speed test ID</param>
-    /// <returns>Success or error message</returns>
+    /// <summary>❌ DELETE SPEED TEST</summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {
         return await ExecuteAsync(async () =>
         {
-            // Lấy userId từ JWT token thay vì query parameter
-            var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("nameid");
-            if (userIdClaim == null)
-            {
-                throw new UnauthorizedAccessException("Invalid user token");
-            }
-
-            var userId = userIdClaim.Value;
+            // 🔒 SpeedTest cần userId để check ownership (khác với Revenue/Expense)
+            // Stored procedure sp_Delete_ICT_SpeedTestResults kiểm tra @OwnerID = @IDNguoiDung
+            // Chỉ owner mới được xóa record của mình (security requirement)
+            var userId = GetCurrentUserId().ToString();
             var success = await _speedTestService.DeleteSpeedTestAsync(id, userId);
             if (!success)
             {
                 throw new InvalidOperationException("Failed to delete speed test result or insufficient permissions");
             }
-
-            _logger.LogInformation("Speed test {Id} deleted successfully", id);
             return new { id = id };
         }, $"delete speed test {id}", "Speed test deleted successfully");
     }
