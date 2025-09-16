@@ -62,7 +62,7 @@ public class SpeedTestService : ISpeedTestService
         return -1;
     }
 
-    public async Task<bool> UpdateSpeedTestAsync(long id, SpeedTestDto speedTest)
+    public async Task<int> UpdateSpeedTestAsync(long id, SpeedTestDto speedTest)
     {
         var parameters = new 
         {
@@ -80,12 +80,12 @@ public class SpeedTestService : ISpeedTestService
         if (dataTable.Rows.Count > 0)
         {
             var returnCode = Convert.ToInt32(dataTable.Rows[0]["ReturnCode"]);
-            return returnCode > 0;
+            return returnCode > 0 ? (int)id : 0; // Return the ID if successful, 0 if failed
         }
-        return false;
+        return 0; // Return 0 instead of false
     }
 
-    public async Task<bool> DeleteSpeedTestAsync(long id)
+    public async Task<int> DeleteSpeedTestAsync(long id)
     {
         var parameters = new 
         {
@@ -96,9 +96,9 @@ public class SpeedTestService : ISpeedTestService
         if (dataTable.Rows.Count > 0)
         {
             var returnCode = Convert.ToInt32(dataTable.Rows[0]["ReturnCode"]);
-            return returnCode == 1;
+            return returnCode == 1 ? (int)id : 0; // Return the ID if successful, 0 if failed
         }
-        return false;
+        return 0; // Return 0 instead of false
     }
 
     private List<SpeedTestDto> ConvertDataTableToSpeedTestDtoList(DataTable dataTable)
