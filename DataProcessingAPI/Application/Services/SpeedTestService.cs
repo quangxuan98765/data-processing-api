@@ -41,7 +41,7 @@ public class SpeedTestService : ISpeedTestService
         return allResults.FirstOrDefault(r => r.Id == id);
     }
 
-    public async Task<long> CreateSpeedTestAsync(SpeedTestDto speedTest)
+    public async Task<int> CreateSpeedTestAsync(SpeedTestDto speedTest)
     {
         var parameters = new 
         {
@@ -57,9 +57,10 @@ public class SpeedTestService : ISpeedTestService
         var dataTable = await _databaseService.ExecuteStoredProcAsync("sp_Insert_ICT_SpeedTestResults", parameters);
         if (dataTable.Rows.Count > 0)
         {
-            return Convert.ToInt64(dataTable.Rows[0]["ReturnCode"]);
+            var returnCode = Convert.ToInt32(dataTable.Rows[0]["ReturnCode"]);
+            return returnCode > 0 ? returnCode : 0; // Return the new ID if successful, 0 if failed
         }
-        return -1;
+        return 0; // Return 0 instead of -1
     }
 
     public async Task<int> UpdateSpeedTestAsync(long id, SpeedTestDto speedTest)
